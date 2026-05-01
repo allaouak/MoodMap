@@ -1,17 +1,13 @@
 import { Tabs } from "expo-router";
-import { View, Text } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   return (
-    <View className="items-center gap-0.5 pt-1">
-      <Text className={`text-xl ${focused ? "opacity-100" : "opacity-40"}`}>
+    <View style={styles.tabIcon}>
+      <Text style={[styles.emoji, { opacity: focused ? 1 : 0.4 }]}>
         {emoji}
       </Text>
-      <Text
-        className={`text-xs font-medium ${
-          focused ? "text-brand-600" : "text-gray-400"
-        }`}
-      >
+      <Text style={[styles.label, { color: focused ? "#6D28D9" : "#9CA3AF" }]}>
         {label}
       </Text>
     </View>
@@ -23,12 +19,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#F3F4F6",
-          height: 80,
-          paddingBottom: 8,
-        },
+        tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
       }}
     >
@@ -67,3 +58,24 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: "#FFFFFF",
+    borderTopColor: "#F3F4F6",
+    height: 80,
+    paddingBottom: 8,
+  },
+  tabIcon: {
+    alignItems: "center",
+    gap: 2,
+    paddingTop: 4,
+  },
+  emoji: {
+    fontSize: 20,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+});
