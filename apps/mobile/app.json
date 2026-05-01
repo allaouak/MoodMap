@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "MoodMap",
+    "slug": "moodmap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "moodmap",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F8F4FF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.moodmap.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger votre journal.",
+        "NSCameraUsageDescription": "MoodMap peut utiliser la caméra pour ajouter des photos à votre journal.",
+        "NSPhotoLibraryUsageDescription": "MoodMap peut accéder à vos photos pour votre journal."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#F8F4FF"
+      },
+      "package": "com.moodmap.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-font",
+        {
+          "fonts": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

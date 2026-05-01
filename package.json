@@ -1,0 +1,20 @@
+{
+  "name": "moodmap",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "mobile": "pnpm --filter mobile start",
+    "mobile:ios": "pnpm --filter mobile ios",
+    "mobile:android": "pnpm --filter mobile android",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.0.0",
+      "react-native": "0.79.2"
+    }
+  }
+}

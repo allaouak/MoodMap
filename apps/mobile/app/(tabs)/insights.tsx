@@ -1,0 +1,13 @@
+import { View, Text, SafeAreaView } from "react-native";
+
+export default function InsightsScreen() {
+  return (
+    <SafeAreaView className="flex-1 bg-surface-soft items-center justify-center">
+      <Text className="text-4xl mb-4">📊</Text>
+      <Text className="text-xl font-bold text-gray-700">Tendances</Text>
+      <Text className="text-sm text-gray-400 mt-2 text-center px-8">
+        Tes tendances émotionnelles et résumés IA. Bientôt disponible.
+      </Text>
+    </SafeAreaView>
+  );
+}

@@ -1,0 +1,66 @@
+import { supabase } from "@/lib/supabase";
+import { Profile } from "@/types";
+
+export const authService = {
+  async signUp(email: string, password: string, displayName: string) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: displayName },
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async signIn(email: string, password: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async signOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  },
+
+  async resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "moodmap://reset-password",
+    });
+    if (error) throw error;
+  },
+
+  async getProfile(userId: string): Promise<Profile | null> {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      throw error;
+    }
+    return data as Profile;
+  },
+
+  async updateProfile(
+    userId: string,
+    updates: Partial<Pick<Profile, "display_name" | "avatar_url" | "timezone">>
+  ): Promise<Profile> {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Profile;
+  },
+};
