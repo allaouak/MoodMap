@@ -1,14 +1,332 @@
-import { View, Text } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  format,
+  isSameMonth,
+  isToday,
+  isSameDay,
+  addMonths,
+  subMonths,
+  parseISO,
+} from "date-fns";
+import { fr } from "date-fns/locale";
+import { useAuthStore } from "@/stores/auth.store";
+import { moodService } from "@/services/mood.service";
+import { MoodEntry, MOOD_COLOR, MOOD_EMOJI, MOOD_LABELS } from "@/types";
+import { formatTime } from "@/utils/date";
+
+const DAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
+
+function buildGrid(month: Date): Date[] {
+  const monthStart = startOfMonth(month);
+  const monthEnd = endOfMonth(month);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  return eachDayOfInterval({ start: gridStart, end: gridEnd });
+}
+
+function entryForDay(entries: MoodEntry[], day: Date): MoodEntry | undefined {
+  const key = format(day, "yyyy-MM-dd");
+  return entries.find((e) => e.entry_date === key);
+}
 
 export default function CalendarScreen() {
+  const { user } = useAuthStore();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [entries, setEntries] = useState<MoodEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Date | null>(null);
+
+  const loadMonth = useCallback(
+    async (month: Date) => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const from = format(startOfMonth(month), "yyyy-MM-dd");
+        const to = format(endOfMonth(month), "yyyy-MM-dd");
+        const data = await moodService.getEntries(user.id, from, to);
+        setEntries(data);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user]
+  );
+
+  useEffect(() => {
+    loadMonth(currentMonth);
+    setSelected(null);
+  }, [currentMonth, loadMonth]);
+
+  const days = buildGrid(currentMonth);
+  const selectedEntry = selected ? entryForDay(entries, selected) : undefined;
+
+  const goToPrev = () => setCurrentMonth((m) => subMonths(m, 1));
+  const goToNext = () => {
+    const next = addMonths(currentMonth, 1);
+    if (next <= new Date()) setCurrentMonth(next);
+  };
+  const canGoNext = addMonths(currentMonth, 1) <= new Date();
+
   return (
-    <SafeAreaView className="flex-1 bg-surface-soft items-center justify-center">
-      <Text className="text-4xl mb-4">📅</Text>
-      <Text className="text-xl font-bold text-gray-700">Calendrier</Text>
-      <Text className="text-sm text-gray-400 mt-2 text-center px-8">
-        Visualise tes humeurs jour par jour. Bientôt disponible.
-      </Text>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header mois */}
+        <View style={styles.monthHeader}>
+          <TouchableOpacity onPress={goToPrev} style={styles.navBtn} activeOpacity={0.7}>
+            <Text style={styles.navArrow}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.monthTitle}>
+            {format(currentMonth, "MMMM yyyy", { locale: fr })}
+          </Text>
+          <TouchableOpacity
+            onPress={goToNext}
+            style={[styles.navBtn, !canGoNext && styles.navBtnDisabled]}
+            activeOpacity={0.7}
+            disabled={!canGoNext}
+          >
+            <Text style={[styles.navArrow, !canGoNext && styles.navArrowDisabled]}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Labels jours de la semaine */}
+        <View style={styles.dayLabels}>
+          {DAY_LABELS.map((d, i) => (
+            <View key={i} style={styles.dayLabelCell}>
+              <Text style={styles.dayLabelText}>{d}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Grille */}
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator color="#6D28D9" />
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {days.map((day) => {
+              const entry = entryForDay(entries, day);
+              const inMonth = isSameMonth(day, currentMonth);
+              const today = isToday(day);
+              const isSelected = selected ? isSameDay(day, selected) : false;
+              const color = entry ? MOOD_COLOR[entry.mood] : null;
+
+              return (
+                <TouchableOpacity
+                  key={day.toISOString()}
+                  style={[
+                    styles.dayCell,
+                    isSelected && styles.dayCellSelected,
+                    today && !isSelected && styles.dayCellToday,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => setSelected(isSameDay(day, selected ?? new Date(0)) ? null : day)}
+                  disabled={!inMonth}
+                >
+                  <Text
+                    style={[
+                      styles.dayNumber,
+                      !inMonth && styles.dayNumberMuted,
+                      today && styles.dayNumberToday,
+                      isSelected && styles.dayNumberSelected,
+                    ]}
+                  >
+                    {format(day, "d")}
+                  </Text>
+                  {color && inMonth ? (
+                    <View style={[styles.moodDot, { backgroundColor: color }]} />
+                  ) : (
+                    <View style={styles.moodDotEmpty} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Légende */}
+        <View style={styles.legend}>
+          {([1, 2, 3, 4, 5] as const).map((level) => (
+            <View key={level} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: MOOD_COLOR[level] }]} />
+              <Text style={styles.legendLabel}>{MOOD_LABELS[level]}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Détail du jour sélectionné */}
+        {selected && (
+          <View style={styles.detailCard}>
+            <Text style={styles.detailDate}>
+              {format(selected, "EEEE d MMMM", { locale: fr })}
+            </Text>
+            {selectedEntry ? (
+              <View style={styles.detailContent}>
+                <View style={styles.detailMoodRow}>
+                  <Text style={styles.detailEmoji}>{MOOD_EMOJI[selectedEntry.mood]}</Text>
+                  <View style={styles.detailMoodInfo}>
+                    <Text style={styles.detailMoodLabel}>
+                      {MOOD_LABELS[selectedEntry.mood]}
+                    </Text>
+                    <Text style={styles.detailTime}>
+                      Enregistré à {formatTime(selectedEntry.created_at)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.detailMetrics}>
+                  <View style={styles.metricBadge}>
+                    <Text style={styles.metricLabel}>Énergie</Text>
+                    <Text style={[styles.metricValue, { color: "#60A5FA" }]}>
+                      {selectedEntry.energy}/5
+                    </Text>
+                  </View>
+                  <View style={styles.metricBadge}>
+                    <Text style={styles.metricLabel}>Stress</Text>
+                    <Text style={[styles.metricValue, { color: "#F97316" }]}>
+                      {selectedEntry.stress}/5
+                    </Text>
+                  </View>
+                </View>
+                {selectedEntry.tags.length > 0 && (
+                  <View style={styles.tags}>
+                    {selectedEntry.tags.map((tag) => (
+                      <View key={tag} style={styles.tag}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {selectedEntry.note && (
+                  <Text style={styles.detailNote}>"{selectedEntry.note}"</Text>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.detailEmpty}>Pas d'entrée pour ce jour.</Text>
+            )}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#F8F4FF" },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 16 },
+
+  monthHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+  },
+  navBtn: { padding: 8 },
+  navBtnDisabled: { opacity: 0.3 },
+  navArrow: { fontSize: 28, color: "#6D28D9", fontWeight: "300" },
+  navArrowDisabled: { color: "#9CA3AF" },
+  monthTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    textTransform: "capitalize",
+  },
+
+  dayLabels: { flexDirection: "row" },
+  dayLabelCell: { flex: 1, alignItems: "center", paddingVertical: 4 },
+  dayLabelText: { fontSize: 12, fontWeight: "600", color: "#9CA3AF" },
+
+  loader: { paddingVertical: 60, alignItems: "center" },
+
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  dayCell: {
+    width: "14.285714%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    borderRadius: 12,
+  },
+  dayCellSelected: { backgroundColor: "#EDE5FF" },
+  dayCellToday: { backgroundColor: "#F3F0FF" },
+  dayNumber: { fontSize: 14, fontWeight: "500", color: "#374151" },
+  dayNumberMuted: { color: "#D1D5DB" },
+  dayNumberToday: { color: "#6D28D9", fontWeight: "700" },
+  dayNumberSelected: { color: "#6D28D9", fontWeight: "700" },
+  moodDot: { width: 6, height: 6, borderRadius: 3 },
+  moodDotEmpty: { width: 6, height: 6 },
+
+  legend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendLabel: { fontSize: 11, color: "#6B7280" },
+
+  detailCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    gap: 12,
+  },
+  detailDate: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6D28D9",
+    textTransform: "capitalize",
+  },
+  detailContent: { gap: 12 },
+  detailMoodRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  detailEmoji: { fontSize: 36 },
+  detailMoodInfo: { gap: 2 },
+  detailMoodLabel: { fontSize: 16, fontWeight: "700", color: "#1F2937" },
+  detailTime: { fontSize: 12, color: "#9CA3AF" },
+  detailMetrics: { flexDirection: "row", gap: 8 },
+  metricBadge: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 10,
+    alignItems: "center",
+    gap: 2,
+  },
+  metricLabel: { fontSize: 11, color: "#9CA3AF", fontWeight: "500" },
+  metricValue: { fontSize: 16, fontWeight: "700" },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: {
+    backgroundColor: "#EDE5FF",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  tagText: { fontSize: 12, color: "#6D28D9", fontWeight: "500" },
+  detailNote: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontStyle: "italic",
+    lineHeight: 20,
+  },
+  detailEmpty: { fontSize: 14, color: "#9CA3AF", textAlign: "center", paddingVertical: 8 },
+});
