@@ -1,12 +1,19 @@
-import { Tabs } from "expo-router";
+import { Slot } from "expo-router";
+import { View, StyleSheet } from "react-native";
+import { BottomBar } from "@/components/layout/BottomBar";
 
 export default function TabsLayout() {
   return (
-    <Tabs>
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="calendar" />
-      <Tabs.Screen name="insights" />
-      <Tabs.Screen name="settings" />
-    </Tabs>
+    <View style={styles.root}>
+      <Slot />
+      <BottomBar />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#F8F4FF",
+  },
+});
