@@ -1,4 +1,5 @@
-import { View, Text, SafeAreaView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";

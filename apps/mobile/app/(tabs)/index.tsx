@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, ScrollView, Alert, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { moodService } from "@/services/mood.service";
 import { useMoodStore } from "@/stores/mood.store";

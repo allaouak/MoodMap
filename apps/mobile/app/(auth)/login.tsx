@@ -2,13 +2,13 @@ import { useState } from "react";
 import {
   View,
   Text,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
