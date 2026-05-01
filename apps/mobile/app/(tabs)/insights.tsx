@@ -74,7 +74,7 @@ function StatCard({
       <Text style={[styles.statValue, { color }]}>{avg > 0 ? avg.toFixed(1) : "—"}</Text>
       {avg > 0 && (
         <View style={styles.barTrack}>
-          <View style={[styles.barFill, { width: `${pct}%` as any, backgroundColor: color }]} />
+          <View style={[styles.barFill, { width: `${pct}%` as `${number}%`, backgroundColor: color }]} />
         </View>
       )}
     </View>
