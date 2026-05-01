@@ -17,7 +17,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.moodmap.app",
-      "infoPlist": {}
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -35,6 +37,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-notifications",
+      "expo-local-authentication",
       [
         "expo-font",
         {

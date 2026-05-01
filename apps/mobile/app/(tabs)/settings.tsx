@@ -17,6 +17,7 @@ import {
   notificationService,
   NotificationPrefs,
 } from "@/services/notification.service";
+import { biometricService } from "@/services/biometric.service";
 
 const TIME_OPTIONS = [
   { label: "8h00", hour: 8, minute: 0 },
@@ -31,10 +32,24 @@ export default function SettingsScreen() {
   const { reset } = useAuthStore();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [saving, setSaving] = useState(false);
+  const [lockEnabled, setLockEnabled] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
 
   useEffect(() => {
     notificationService.getPrefs().then(setPrefs);
+    biometricService.isSupported().then(setBiometricSupported);
+    biometricService.getLockEnabled().then(setLockEnabled);
   }, []);
+
+  const handleLockToggle = async (enabled: boolean) => {
+    if (enabled) {
+      // Demander une authentification avant d'activer le verrou
+      const ok = await biometricService.authenticate();
+      if (!ok) return;
+    }
+    await biometricService.setLockEnabled(enabled);
+    setLockEnabled(enabled);
+  };
 
   const handleToggle = async (enabled: boolean) => {
     if (!prefs) return;
@@ -185,6 +200,31 @@ export default function SettingsScreen() {
                 </View>
               )}
             </>
+          )}
+        </View>
+
+        {/* Verrouillage biométrique */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Sécurité</Text>
+          {biometricSupported ? (
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Text style={styles.rowLabel}>Verrouillage Face ID</Text>
+                <Text style={styles.rowSub}>
+                  Protège l'accès à ton journal
+                </Text>
+              </View>
+              <Switch
+                value={lockEnabled}
+                onValueChange={handleLockToggle}
+                trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}
+                thumbColor={lockEnabled ? "#6D28D9" : "#F9FAFB"}
+              />
+            </View>
+          ) : (
+            <Text style={styles.rowSub}>
+              Face ID ou Touch ID non disponible sur cet appareil.
+            </Text>
           )}
         </View>
 
