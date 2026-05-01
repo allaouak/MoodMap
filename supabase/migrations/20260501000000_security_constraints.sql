@@ -19,6 +19,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS lock_premium_field ON public.profiles;
 CREATE TRIGGER lock_premium_field
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW
@@ -26,6 +27,11 @@ CREATE TRIGGER lock_premium_field
 
 -- 2. Contraintes de validation sur profiles
 -- ------------------------------------------------------------
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS display_name_length,
+  DROP CONSTRAINT IF EXISTS timezone_length,
+  DROP CONSTRAINT IF EXISTS avatar_url_length;
+
 ALTER TABLE public.profiles
   ADD CONSTRAINT display_name_length
     CHECK (display_name IS NULL OR char_length(display_name) <= 50),
@@ -57,13 +63,15 @@ $$;
 -- 4. Contraintes de validation sur mood_entries
 -- ------------------------------------------------------------
 ALTER TABLE public.mood_entries
-  -- Note : max 500 caractères (cohérent avec la validation client)
+  DROP CONSTRAINT IF EXISTS note_max_length,
+  DROP CONSTRAINT IF EXISTS tags_max_count,
+  DROP CONSTRAINT IF EXISTS tag_item_length;
+
+ALTER TABLE public.mood_entries
   ADD CONSTRAINT note_max_length
     CHECK (note IS NULL OR char_length(note) <= 500),
-  -- Tags : max 10 tags par entrée
   ADD CONSTRAINT tags_max_count
     CHECK (array_length(tags, 1) IS NULL OR array_length(tags, 1) <= 10),
-  -- Chaque tag : max 30 caractères, non vide — via fonction IMMUTABLE
   ADD CONSTRAINT tag_item_length
     CHECK (validate_tags(tags));
 
