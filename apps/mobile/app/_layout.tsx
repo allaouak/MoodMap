@@ -3,7 +3,7 @@ import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import "../global.css";
+import "./global.css";
 import { useAuthListener, useAuth } from "@/hooks/useAuth";
 
 SplashScreen.preventAutoHideAsync();
