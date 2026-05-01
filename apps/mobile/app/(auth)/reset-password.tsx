@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,29 +15,49 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
+import { useAuthStore } from "@/stores/auth.store";
 
-const loginSchema = z.object({
-  email: z.string().email("Email invalide"),
-  password: z.string().min(8, "Minimum 8 caractères"),
-});
+const schema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Minimum 8 caractères")
+      .regex(/[A-Z]/, "Au moins une majuscule")
+      .regex(/[0-9]/, "Au moins un chiffre"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas",
+    path: ["confirmPassword"],
+  });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type Form = z.infer<typeof schema>;
 
-export default function LoginScreen() {
+export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
+  const { setRecovery } = useAuthStore();
+
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+  } = useForm<Form>({ resolver: zodResolver(schema) });
 
-  const onSubmit = async (values: LoginForm) => {
+  const onSubmit = async (values: Form) => {
     try {
       setLoading(true);
-      await authService.signIn(values.email, values.password);
+      await authService.updatePassword(values.password);
+      setRecovery(false);
+      Alert.alert(
+        "Mot de passe mis à jour",
+        "Tu peux maintenant te connecter avec ton nouveau mot de passe.",
+        [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+      );
     } catch {
-      // Message générique — ne pas exposer si l'email existe ou non (user enumeration)
-      Alert.alert("Erreur", "Email ou mot de passe incorrect.");
+      Alert.alert(
+        "Erreur",
+        "Impossible de mettre à jour le mot de passe. Le lien a peut-être expiré."
+      );
     } finally {
       setLoading(false);
     }
@@ -56,70 +75,53 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="gap-2">
-            <TouchableOpacity onPress={() => router.back()} className="mb-4">
-              <Text className="text-brand-500 text-base">← Retour</Text>
-            </TouchableOpacity>
             <Text className="text-3xl font-bold text-gray-900">
-              Bon retour 👋
+              Nouveau mot de passe
             </Text>
             <Text className="text-gray-500">
-              Connecte-toi pour retrouver ton journal.
+              Choisis un mot de passe sécurisé pour ton compte MoodMap.
             </Text>
           </View>
 
           <View className="gap-4">
             <Controller
               control={control}
-              name="email"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Email"
-                  placeholder="toi@exemple.com"
-                  keyboardType="email-address"
-                  textContentType="emailAddress"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.email?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
               name="password"
               render={({ field: { onChange, value } }) => (
                 <Input
-                  label="Mot de passe"
+                  label="Nouveau mot de passe"
                   placeholder="••••••••"
                   secureTextEntry
-                  textContentType="password"
+                  textContentType="newPassword"
                   value={value}
                   onChangeText={onChange}
                   error={errors.password?.message}
                 />
               )}
             />
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Confirme le mot de passe"
+                  placeholder="••••••••"
+                  secureTextEntry
+                  textContentType="newPassword"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.confirmPassword?.message}
+                />
+              )}
+            />
           </View>
 
-          <View className="gap-3">
-            <Button
-              label="Se connecter"
-              size="lg"
-              loading={loading}
-              onPress={handleSubmit(onSubmit)}
-            />
-            <Button
-              label="Mot de passe oublié ?"
-              variant="ghost"
-              onPress={() => router.push("/(auth)/forgot-password")}
-            />
-          </View>
-
-          <View className="flex-row justify-center gap-1">
-            <Text className="text-gray-500">Pas encore de compte ?</Text>
-            <TouchableOpacity onPress={() => router.replace("/(auth)/register")}>
-              <Text className="text-brand-500 font-semibold">S'inscrire</Text>
-            </TouchableOpacity>
-          </View>
+          <Button
+            label="Mettre à jour"
+            size="lg"
+            loading={loading}
+            onPress={handleSubmit(onSubmit)}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

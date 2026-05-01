@@ -13,7 +13,6 @@ export const authService = {
       options: { data: { display_name: displayName } },
     });
     if (error) throw error;
-    // session est null quand Supabase exige une confirmation email
     return { requiresConfirmation: !data.session };
   },
 
@@ -35,6 +34,18 @@ export const authService = {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: "moodmap://reset-password",
     });
+    if (error) throw error;
+  },
+
+  async updatePassword(newPassword: string) {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) throw error;
+  },
+
+  async deleteAccount() {
+    const { error } = await supabase.rpc("delete_user_account");
     if (error) throw error;
   },
 

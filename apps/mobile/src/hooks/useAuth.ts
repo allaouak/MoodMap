@@ -4,20 +4,27 @@ import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
 
 export function useAuthListener() {
-  const { setSession, setProfile, setLoading } = useAuthStore();
+  const { setSession, setProfile, setLoading, setRecovery } = useAuthStore();
 
   useEffect(() => {
-    // onAuthStateChange fire INITIAL_SESSION au montage — pas besoin de getSession() séparé.
-    // Évite la race condition entre getSession() et onAuthStateChange.
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        // Flux de récupération de mot de passe — ne pas rediriger vers les tabs
+        if (event === "PASSWORD_RECOVERY") {
+          setSession(session);
+          setRecovery(true);
+          setLoading(false);
+          return;
+        }
+
         setSession(session);
+
         if (session?.user) {
           try {
             const profile = await authService.getProfile(session.user.id);
             setProfile(profile);
           } catch {
-            // Profil non bloquant — l'utilisateur peut continuer sans profil chargé
+            // Profil non bloquant
           } finally {
             setLoading(false);
           }
@@ -29,7 +36,7 @@ export function useAuthListener() {
     );
 
     return () => listener.subscription.unsubscribe();
-  }, [setSession, setProfile, setLoading]);
+  }, [setSession, setProfile, setLoading, setRecovery]);
 }
 
 export function useAuth() {

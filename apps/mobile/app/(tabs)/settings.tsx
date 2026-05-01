@@ -61,6 +61,32 @@ export default function SettingsScreen() {
     setPrefs(next);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Supprimer mon compte",
+      "Toutes tes données (humeurs, journal, profil) seront définitivement supprimées. Cette action est irréversible.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer définitivement",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await notificationService.cancelAll();
+              await authService.deleteAccount();
+              reset();
+            } catch {
+              Alert.alert(
+                "Erreur",
+                "Impossible de supprimer le compte. Réessaie ou contacte le support."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSignOut = () => {
     Alert.alert(
       "Se déconnecter",
@@ -181,6 +207,18 @@ export default function SettingsScreen() {
         >
           <Text style={styles.signOutText}>Se déconnecter</Text>
         </TouchableOpacity>
+
+        {/* Suppression de compte (RGPD) */}
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={handleDeleteAccount}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.deleteBtnLabel}>Supprimer mon compte</Text>
+          <Text style={styles.deleteBtnSub}>
+            Efface définitivement toutes tes données
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -254,4 +292,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   signOutText: { fontSize: 15, fontWeight: "600", color: "#EF4444" },
+
+  deleteBtn: {
+    backgroundColor: "#FFF5F5",
+    borderRadius: 20,
+    padding: 18,
+    alignItems: "center",
+    gap: 4,
+  },
+  deleteBtnLabel: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
+  deleteBtnSub: { fontSize: 11, color: "#9CA3AF" },
 });
