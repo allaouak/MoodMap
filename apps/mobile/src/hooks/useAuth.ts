@@ -7,27 +7,23 @@ export function useAuthListener() {
   const { setSession, setProfile, setLoading } = useAuthStore();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        authService
-          .getProfile(session.user.id)
-          .then(setProfile)
-          .catch(console.error)
-          .finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
-
+    // onAuthStateChange fire INITIAL_SESSION au montage — pas besoin de getSession() séparé.
+    // Évite la race condition entre getSession() et onAuthStateChange.
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         if (session?.user) {
-          authService
-            .getProfile(session.user.id)
-            .then(setProfile)
-            .catch(console.error);
+          try {
+            const profile = await authService.getProfile(session.user.id);
+            setProfile(profile);
+          } catch {
+            // Profil non bloquant — l'utilisateur peut continuer sans profil chargé
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          setProfile(null);
+          setLoading(false);
         }
       }
     );

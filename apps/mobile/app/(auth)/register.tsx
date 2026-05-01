@@ -62,10 +62,9 @@ export default function RegisterScreen() {
         );
       }
       // Si la confirmation email est désactivée, onAuthStateChange redirige automatiquement
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Inscription impossible";
-      Alert.alert("Erreur", message);
+    } catch {
+      // Message générique — ne pas exposer si l'email est déjà utilisé
+      Alert.alert("Erreur", "Impossible de créer le compte. Vérifie tes informations et réessaie.");
     } finally {
       setLoading(false);
     }

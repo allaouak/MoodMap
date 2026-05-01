@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  ScrollView,
 } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -16,11 +15,13 @@ import { moodService } from "@/services/mood.service";
 import { MoodEntry, MoodLevel, EnergyLevel, StressLevel } from "@/types";
 import { todayISO } from "@/utils/date";
 
+const MAX_TAGS = 10;
+
 const checkInSchema = z.object({
-  mood: z.number().min(1).max(5),
-  energy: z.number().min(1).max(5),
-  stress: z.number().min(1).max(5),
-  note: z.string().max(500).optional(),
+  mood: z.number().int().min(1).max(5),
+  energy: z.number().int().min(1).max(5),
+  stress: z.number().int().min(1).max(5),
+  note: z.string().trim().max(500).optional(),
 });
 
 type CheckInForm = z.infer<typeof checkInSchema>;
@@ -54,19 +55,23 @@ export function MoodCheckIn({ userId, existingEntry, onSaved, onCancel }: MoodCh
   });
 
   const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
+    setSelectedTags((prev) => {
+      if (prev.includes(tag)) return prev.filter((t) => t !== tag);
+      if (prev.length >= MAX_TAGS) return prev;
+      return [...prev, tag];
+    });
   };
 
   const onSubmit = async (values: CheckInForm) => {
     try {
       setLoading(true);
+      const trimmedNote = values.note?.trim();
       const input = {
         mood: values.mood as MoodLevel,
         energy: values.energy as EnergyLevel,
         stress: values.stress as StressLevel,
-        note: values.note || undefined,
+        // Omettre note si vide — évite note: undefined avec exactOptionalPropertyTypes
+        ...(trimmedNote ? { note: trimmedNote } : {}),
         tags: selectedTags,
         entry_date: todayISO(),
       };

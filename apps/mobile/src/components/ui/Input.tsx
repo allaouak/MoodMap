@@ -2,8 +2,8 @@ import React from "react";
 import { View, Text, TextInput, TextInputProps } from "react-native";
 
 interface InputProps extends TextInputProps {
-  label?: string;
-  error?: string;
+  label?: string | undefined;
+  error?: string | undefined;
 }
 
 export function Input({ label, error, ...props }: InputProps) {

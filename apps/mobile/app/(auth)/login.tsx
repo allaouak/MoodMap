@@ -36,10 +36,9 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await authService.signIn(values.email, values.password);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Connexion impossible";
-      Alert.alert("Erreur", message);
+    } catch {
+      // Message générique — ne pas exposer si l'email existe ou non (user enumeration)
+      Alert.alert("Erreur", "Email ou mot de passe incorrect.");
     } finally {
       setLoading(false);
     }

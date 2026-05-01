@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -98,6 +98,7 @@ export default function InsightsScreen() {
   const [loading, setLoading] = useState(true);
   const [stats7, setStats7] = useState<Stats | null>(null);
   const [stats30, setStats30] = useState<Stats | null>(null);
+  const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -112,15 +113,19 @@ export default function InsightsScreen() {
         moodService.getEntries(user.id, from30, today),
       ]);
 
-      setStats7(computeStats(e7));
-      setStats30(computeStats(e30));
+      if (mountedRef.current) {
+        setStats7(computeStats(e7));
+        setStats30(computeStats(e30));
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
+    mountedRef.current = true;
     load();
+    return () => { mountedRef.current = false; };
   }, [load]);
 
   if (loading) {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,6 @@ import {
   isSameDay,
   addMonths,
   subMonths,
-  parseISO,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useAuthStore } from "@/stores/auth.store";
@@ -47,8 +46,9 @@ export default function CalendarScreen() {
   const { user } = useAuthStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [entries, setEntries] = useState<MoodEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Date | null>(null);
+  const mountedRef = useRef(true);
 
   const loadMonth = useCallback(
     async (month: Date) => {
@@ -58,17 +58,19 @@ export default function CalendarScreen() {
         const from = format(startOfMonth(month), "yyyy-MM-dd");
         const to = format(endOfMonth(month), "yyyy-MM-dd");
         const data = await moodService.getEntries(user.id, from, to);
-        setEntries(data);
+        if (mountedRef.current) setEntries(data);
       } finally {
-        setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     },
     [user]
   );
 
   useEffect(() => {
+    mountedRef.current = true;
     loadMonth(currentMonth);
     setSelected(null);
+    return () => { mountedRef.current = false; };
   }, [currentMonth, loadMonth]);
 
   const days = buildGrid(currentMonth);

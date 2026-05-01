@@ -117,12 +117,14 @@ export default function TodayScreen() {
             contentContainerStyle={styles.modalContent}
             keyboardShouldPersistTaps="handled"
           >
-            <MoodCheckIn
-              userId={user?.id ?? ""}
-              existingEntry={todayEntry}
-              onSaved={handleSaved}
-              onCancel={() => setShowCheckIn(false)}
-            />
+            {user && (
+              <MoodCheckIn
+                userId={user.id}
+                existingEntry={todayEntry}
+                onSaved={handleSaved}
+                onCancel={() => setShowCheckIn(false)}
+              />
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
