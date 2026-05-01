@@ -2,16 +2,19 @@ import { supabase } from "@/lib/supabase";
 import { Profile } from "@/types";
 
 export const authService = {
-  async signUp(email: string, password: string, displayName: string) {
+  async signUp(
+    email: string,
+    password: string,
+    displayName: string
+  ): Promise<{ requiresConfirmation: boolean }> {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { display_name: displayName },
-      },
+      options: { data: { display_name: displayName } },
     });
     if (error) throw error;
-    return data;
+    // session est null quand Supabase exige une confirmation email
+    return { requiresConfirmation: !data.session };
   },
 
   async signIn(email: string, password: string) {

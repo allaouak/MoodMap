@@ -49,12 +49,19 @@ export default function RegisterScreen() {
   const onSubmit = async (values: RegisterForm) => {
     try {
       setLoading(true);
-      await authService.signUp(values.email, values.password, values.displayName);
-      Alert.alert(
-        "Compte créé !",
-        "Vérifie ton email pour confirmer ton compte.",
-        [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+      const { requiresConfirmation } = await authService.signUp(
+        values.email,
+        values.password,
+        values.displayName
       );
+      if (requiresConfirmation) {
+        Alert.alert(
+          "Compte créé !",
+          "Vérifie ton email pour confirmer ton compte.",
+          [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+        );
+      }
+      // Si la confirmation email est désactivée, onAuthStateChange redirige automatiquement
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Inscription impossible";
