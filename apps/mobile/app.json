@@ -17,11 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.moodmap.app",
-      "infoPlist": {
-        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger votre journal.",
-        "NSCameraUsageDescription": "MoodMap peut utiliser la caméra pour ajouter des photos à votre journal.",
-        "NSPhotoLibraryUsageDescription": "MoodMap peut accéder à vos photos pour votre journal."
-      }
+      "infoPlist": {}
     },
     "android": {
       "adaptiveIcon": {

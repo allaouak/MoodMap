@@ -166,8 +166,10 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Confidentialité</Text>
           <Text style={styles.privacyText}>
-            Tes données émotionnelles sont chiffrées et ne sont jamais partagées
-            avec des tiers. Tu peux demander leur suppression à tout moment.
+            Tes données sont transmises via HTTPS et stockées dans une base
+            sécurisée avec accès strictement limité à ton compte. MoodMap
+            utilise Supabase comme hébergeur de données. Tu peux demander leur
+            suppression à tout moment en contactant le support.
           </Text>
         </View>
 

@@ -83,8 +83,8 @@ export function MoodCheckIn({ userId, existingEntry, onSaved, onCancel }: MoodCh
         entry = await moodService.createEntry(userId, input);
       }
       onSaved(entry);
-    } catch (err: unknown) {
-      Alert.alert("Erreur", err instanceof Error ? err.message : "Impossible d'enregistrer");
+    } catch {
+      Alert.alert("Erreur", "Impossible d'enregistrer. Vérifie ta connexion et réessaie.");
     } finally {
       setLoading(false);
     }
