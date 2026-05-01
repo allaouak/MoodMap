@@ -44,6 +44,11 @@ export const authService = {
     if (error) throw error;
   },
 
+  async confirmPassword(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  },
+
   async deleteAccount() {
     const { error } = await supabase.rpc("delete_user_account");
     if (error) throw error;

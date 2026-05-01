@@ -51,8 +51,8 @@ export const notificationService = {
     await Notifications.cancelAllScheduledNotificationsAsync();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "MoodMap 🌿",
-        body: "Comment tu te sens aujourd'hui ?",
+        title: "MoodMap",
+        body: "Ton moment de pause est arrivé 🌿",
         sound: true,
       },
       trigger: {

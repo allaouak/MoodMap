@@ -17,6 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.moodmap.app",
+      "associatedDomains": ["applinks:moodmap.app"],
       "infoPlist": {
         "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal."
       }
@@ -26,7 +27,21 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#F8F4FF"
       },
-      "package": "com.moodmap.app"
+      "package": "com.moodmap.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "moodmap.app",
+              "pathPrefix": "/reset-password"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +53,13 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-local-authentication",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "khettal",
+          "project": "moodmap"
+        }
+      ],
       [
         "expo-font",
         {

@@ -8,6 +8,8 @@ import {
   Switch,
   StyleSheet,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,12 +30,15 @@ const TIME_OPTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const { reset } = useAuthStore();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [saving, setSaving] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<"idle" | "otp">("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
 
   useEffect(() => {
     notificationService.getPrefs().then(setPrefs);
@@ -83,23 +88,32 @@ export default function SettingsScreen() {
       [
         { text: "Annuler", style: "cancel" },
         {
-          text: "Supprimer définitivement",
+          text: "Continuer",
           style: "destructive",
-          onPress: async () => {
-            try {
-              await notificationService.cancelAll();
-              await authService.deleteAccount();
-              reset();
-            } catch {
-              Alert.alert(
-                "Erreur",
-                "Impossible de supprimer le compte. Réessaie ou contacte le support."
-              );
-            }
+          onPress: () => {
+            setOtpCode("");
+            setDeleteStep("otp");
           },
         },
       ]
     );
+  };
+
+  const handleVerifyAndDelete = async () => {
+    const email = session?.user?.email;
+    if (!email || !otpCode.trim()) return;
+    setOtpLoading(true);
+    try {
+      await authService.confirmPassword(email, otpCode.trim());
+      await notificationService.cancelAll();
+      await authService.deleteAccount();
+      setDeleteStep("idle");
+      reset();
+    } catch {
+      Alert.alert("Mot de passe incorrect", "Vérifie ton mot de passe et réessaie.");
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handleSignOut = () => {
@@ -260,6 +274,54 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+      <Modal
+        visible={deleteStep === "otp"}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteStep("idle")}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Confirme ta suppression</Text>
+            <Text style={styles.modalSub}>
+              Saisis ton mot de passe pour confirmer la suppression définitive de{" "}
+              <Text style={styles.modalEmail}>{session?.user?.email}</Text>
+            </Text>
+            <TextInput
+              style={styles.otpInput}
+              value={otpCode}
+              onChangeText={setOtpCode}
+              placeholder="Mot de passe"
+              placeholderTextColor="#D1D5DB"
+              secureTextEntry
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setDeleteStep("idle")}
+                disabled={otpLoading}
+              >
+                <Text style={styles.modalCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalConfirmBtn,
+                  (!otpCode.trim() || otpLoading) && styles.modalBtnDisabled,
+                ]}
+                onPress={handleVerifyAndDelete}
+                disabled={!otpCode.trim() || otpLoading}
+              >
+                {otpLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Supprimer</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -342,4 +404,50 @@ const styles = StyleSheet.create({
   },
   deleteBtnLabel: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
   deleteBtnSub: { fontSize: 11, color: "#9CA3AF" },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    gap: 16,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937" },
+  modalSub: { fontSize: 14, color: "#6B7280", lineHeight: 22 },
+  modalEmail: { fontWeight: "600", color: "#1F2937" },
+  otpInput: {
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 24,
+    letterSpacing: 8,
+    textAlign: "center",
+    color: "#1F2937",
+  },
+  modalActions: { flexDirection: "row", gap: 12 },
+  modalCancelBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+  },
+  modalCancelText: { fontSize: 15, fontWeight: "600", color: "#6B7280" },
+  modalConfirmBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+  },
+  modalBtnDisabled: { opacity: 0.5 },
+  modalConfirmText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
 });

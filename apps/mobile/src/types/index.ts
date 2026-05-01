@@ -29,7 +29,7 @@ export interface CreateMoodEntryInput {
   mood: MoodLevel;
   energy: EnergyLevel;
   stress: StressLevel;
-  note?: string | undefined;
+  note?: string | null;
   tags?: string[] | undefined;
   entry_date: string;
 }

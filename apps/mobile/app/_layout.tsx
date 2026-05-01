@@ -9,6 +9,10 @@ import { useAuthListener, useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { biometricService } from "@/services/biometric.service";
 import { AppLockOverlay } from "@/components/layout/AppLockOverlay";
+import { initSentry } from "@/lib/sentry";
+
+// Initialisation au plus tôt pour capturer les crashs dès le démarrage
+initSentry();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -16,7 +20,16 @@ export default function RootLayout() {
   useAuthListener();
   const { session, isLoading, isRecovery } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
+  const [lockChecked, setLockChecked] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  // Vérification du verrou au démarrage — avant d'afficher le contenu sensible
+  useEffect(() => {
+    biometricService.getLockEnabled().then((enabled) => {
+      if (enabled) setIsLocked(true);
+      setLockChecked(true);
+    });
+  }, []);
 
   // Verrouillage au passage en arrière-plan
   useEffect(() => {
@@ -35,19 +48,36 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  // Interception des deep links de récupération de mot de passe
+  // Interception stricte des deep links de récupération de mot de passe.
+  // Format attendu : moodmap://reset-password?code=<code_pkce>
   useEffect(() => {
     const handleUrl = async (url: string) => {
-      if (!url.includes("reset-password")) return;
+      let parsed: URL;
       try {
-        const normalized = url.replace("moodmap://", "https://x.placeholder/");
-        const parsed = new URL(normalized);
-        const code = parsed.searchParams.get("code");
-        if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
+        if (url.startsWith("moodmap://")) {
+          // Scheme custom — fallback dev / appareils sans App Links configurés
+          parsed = new URL(url.replace("moodmap://", "https://moodmap.app/"));
+        } else if (url.startsWith("https://moodmap.app/")) {
+          // Universal Link (iOS) / App Link (Android) — chemin sécurisé
+          parsed = new URL(url);
+        } else {
+          return;
         }
       } catch {
-        // URL mal formée — ignorer
+        return;
+      }
+
+      // Vérifier le path exact (pas de sous-path accepté)
+      if (parsed.pathname !== "/reset-password") return;
+
+      const code = parsed.searchParams.get("code");
+      // Valider le format du code PKCE (alphanumérique + chars URL-safe)
+      if (!code || !/^[A-Za-z0-9._~-]{10,512}$/.test(code)) return;
+
+      try {
+        await supabase.auth.exchangeCodeForSession(code);
+      } catch {
+        // Token invalide ou expiré — onAuthStateChange ne fired pas
       }
     };
 
@@ -61,18 +91,18 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  // Redirection selon l'état d'auth
+  // Redirection selon l'état d'auth — attend aussi que le verrou soit vérifié
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !lockChecked) return;
     SplashScreen.hideAsync();
     if (isRecovery) {
       router.replace("/(auth)/reset-password");
     } else if (session) {
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)" as never);
     } else {
       router.replace("/(auth)/welcome");
     }
-  }, [session, isLoading, isRecovery]);
+  }, [session, isLoading, isRecovery, lockChecked]);
 
   return (
     <>

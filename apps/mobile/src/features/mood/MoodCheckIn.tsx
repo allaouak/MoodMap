@@ -65,13 +65,12 @@ export function MoodCheckIn({ userId, existingEntry, onSaved, onCancel }: MoodCh
   const onSubmit = async (values: CheckInForm) => {
     try {
       setLoading(true);
-      const trimmedNote = values.note?.trim();
       const input = {
         mood: values.mood as MoodLevel,
         energy: values.energy as EnergyLevel,
         stress: values.stress as StressLevel,
-        // Omettre note si vide — évite note: undefined avec exactOptionalPropertyTypes
-        ...(trimmedNote ? { note: trimmedNote } : {}),
+        // null efface explicitement la note en base lors d'une mise à jour
+        note: values.note?.trim() || null,
         tags: selectedTags,
         entry_date: todayISO(),
       };
