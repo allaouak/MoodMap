@@ -56,6 +56,8 @@ const MODULE_EXPLAIN: Record<ContextualModule, string> = {
   screen_time: "Tu pourras saisir ton temps d'écran manuellement lors de chaque check-in. Aucun accès aux apps ou à l'historique n'est demandé.",
 };
 
+const NATIVE_HEALTH_MODULES: ContextualModule[] = ["sleep", "activity"];
+
 export default function SettingsScreen() {
   const { profile, session, user, setProfile } = useAuth();
   const { reset, setLockEnabled: setGlobalLockEnabled } = useAuthStore();
@@ -72,6 +74,7 @@ export default function SettingsScreen() {
   const [editNameValue, setEditNameValue] = useState("");
   const [editNameLoading, setEditNameLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const nativeHealthUnavailable = isExpoGo();
 
   useEffect(() => {
     notificationService.getPrefs().then(setPrefs);
@@ -136,6 +139,13 @@ export default function SettingsScreen() {
 
   const handleConsentToggle = async (module: ContextualModule, enabled: boolean) => {
     if (!user) return;
+    if (enabled && nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module)) {
+      Alert.alert(
+        "Development build requise",
+        "Ce module utilise une API santé native qui n'est pas disponible dans Expo Go."
+      );
+      return;
+    }
 
     if (enabled) {
       Alert.alert(
@@ -459,17 +469,32 @@ export default function SettingsScreen() {
             Enrichis ton journal avec des données de ton quotidien. Chaque module est indépendant et révocable.
           </Text>
           {(["sleep", "activity", "screen_time"] as ContextualModule[]).map((module) => (
-            <View key={module} style={styles.row}>
+            <View key={module} style={styles.contextualRow}>
               <View style={styles.rowLeft}>
-                <Text style={styles.rowLabel}>{MODULE_LABEL[module]}</Text>
+                <View style={styles.moduleTitleRow}>
+                  <Text style={styles.rowLabel}>{MODULE_LABEL[module]}</Text>
+                  {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
+                    <View style={styles.moduleBadge}>
+                      <Text style={styles.moduleBadgeText}>Dev build</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.rowSub}>{MODULE_DESC[module]}</Text>
+                {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
+                  <Text style={styles.moduleUnavailableText}>
+                    Non disponible dans Expo Go.
+                  </Text>
+                )}
               </View>
               <Switch
                 value={consents[module]}
                 onValueChange={(v) => handleConsentToggle(module, v)}
                 trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}
                 thumbColor={consents[module] ? "#6D28D9" : "#F9FAFB"}
-                disabled={consentSaving}
+                disabled={
+                  consentSaving ||
+                  (nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module))
+                }
               />
             </View>
           ))}
@@ -667,9 +692,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  contextualRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    minHeight: 54,
+  },
   rowLeft: { flex: 1, gap: 2 },
+  moduleTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   rowLabel: { fontSize: 15, fontWeight: "500", color: "#1F2937" },
   rowSub: { fontSize: 12, color: "#9CA3AF" },
+  moduleBadge: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  moduleBadgeText: { fontSize: 10, color: "#92400E", fontWeight: "700" },
+  moduleUnavailableText: { fontSize: 11, color: "#B45309", fontWeight: "500" },
 
   timeSection: { gap: 10, paddingTop: 4 },
   timeSectionLabel: { fontSize: 12, fontWeight: "600", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.5 },
