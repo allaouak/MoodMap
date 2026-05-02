@@ -19,7 +19,13 @@
       "bundleIdentifier": "com.moodmap.app",
       "associatedDomains": ["applinks:moodmap.app"],
       "infoPlist": {
-        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal."
+        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal.",
+        "NSHealthShareUsageDescription": "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
+        "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
       }
     },
     "android": {
@@ -28,6 +34,11 @@
         "backgroundColor": "#F8F4FF"
       },
       "package": "com.moodmap.app",
+      "permissions": [
+        "android.permission.health.READ_SLEEP_SESSION",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_EXERCISE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -53,6 +64,17 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-local-authentication",
+      "@kingstinct/react-native-healthkit",
+      [
+        "react-native-health-connect",
+        {
+          "permissions": [
+            "android.permission.health.READ_SLEEP_SESSION",
+            "android.permission.health.READ_STEPS",
+            "android.permission.health.READ_EXERCISE"
+          ]
+        }
+      ],
       [
         "@sentry/react-native/expo",
         {

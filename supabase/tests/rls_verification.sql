@@ -12,6 +12,8 @@ DECLARE
   user_b_id      UUID := gen_random_uuid();
   user_a_entry   UUID;
   user_b_entry   UUID;
+  user_a_context UUID;
+  user_b_context UUID;
   result_count   INT;
 BEGIN
 
@@ -45,6 +47,38 @@ BEGIN
   INSERT INTO public.mood_entries (user_id, mood, energy, stress, tags, entry_date)
   VALUES (user_b_id, 3, 3, 3, '{}', CURRENT_DATE - 1)
   RETURNING id INTO user_b_entry;
+
+  -- 4. Consentements et données contextuelles pour les deux utilisateurs
+  INSERT INTO public.contextual_consent (user_id, module, enabled, granted_at)
+  VALUES
+    (user_a_id, 'sleep', true, now()),
+    (user_a_id, 'activity', true, now()),
+    (user_b_id, 'sleep', true, now()),
+    (user_b_id, 'activity', true, now());
+
+  INSERT INTO public.contextual_entries (
+    user_id, entry_date,
+    sleep_duration_min, sleep_bedtime, sleep_wake_time, sleep_quality, sleep_source,
+    activity_steps, activity_active_min, activity_training_min, activity_level, activity_source
+  )
+  VALUES (
+    user_a_id, CURRENT_DATE,
+    420, '23:15', '07:00', 4, 'healthkit',
+    8200, 82, 20, 'moderate', 'healthkit'
+  )
+  RETURNING id INTO user_a_context;
+
+  INSERT INTO public.contextual_entries (
+    user_id, entry_date,
+    sleep_duration_min, sleep_bedtime, sleep_wake_time, sleep_quality, sleep_source,
+    activity_steps, activity_active_min, activity_training_min, activity_level, activity_source
+  )
+  VALUES (
+    user_b_id, CURRENT_DATE - 1,
+    360, '00:10', '06:30', 3, 'health_connect',
+    2500, 25, 0, 'sedentary', 'health_connect'
+  )
+  RETURNING id INTO user_b_context;
 
   -- ── Simulation user_a ─────────────────────────────────────────────────────
   PERFORM set_config('request.jwt.claims',
@@ -134,7 +168,75 @@ BEGIN
     'ÉCHEC TEST 8 : set_user_premium() n''a pas mis à jour premium';
   RAISE NOTICE 'TEST 8 PASSÉ : set_user_premium() fonctionne en service_role';
 
-  RAISE NOTICE '✅ Tous les tests RLS sont passés (8/8).';
+  -- TEST 9 : user_a ne peut pas lire les consentements contextuels de user_b
+  SET LOCAL role TO authenticated;
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_consent WHERE user_id = user_b_id;
+  ASSERT result_count = 0,
+    'ÉCHEC TEST 9 : user_a peut lire les consentements de user_b';
+  RAISE NOTICE 'TEST 9 PASSÉ : lecture croisée contextual_consent bloquée';
+
+  -- TEST 10 : user_a ne peut pas lire les données contextuelles de user_b
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_entries WHERE user_id = user_b_id;
+  ASSERT result_count = 0,
+    'ÉCHEC TEST 10 : user_a peut lire les données contextuelles de user_b';
+  RAISE NOTICE 'TEST 10 PASSÉ : lecture croisée contextual_entries bloquée';
+
+  -- TEST 11 : user_a peut lire ses propres données contextuelles
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_entries WHERE user_id = user_a_id;
+  ASSERT result_count = 1,
+    'ÉCHEC TEST 11 : user_a ne peut pas lire ses propres données contextuelles';
+  RAISE NOTICE 'TEST 11 PASSÉ : lecture propre contextual_entries autorisée';
+
+  -- TEST 12 : user_a ne peut pas modifier les données contextuelles de user_b
+  UPDATE public.contextual_entries SET activity_steps = 9000 WHERE id = user_b_context;
+  RESET role;
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_entries WHERE id = user_b_context AND activity_steps = 9000;
+  ASSERT result_count = 0,
+    'ÉCHEC TEST 12 : user_a a pu modifier les données contextuelles de user_b';
+  RAISE NOTICE 'TEST 12 PASSÉ : modification croisée contextual_entries bloquée';
+
+  -- TEST 13 : user_a ne peut pas transférer ses données contextuelles vers user_b
+  SET LOCAL role TO authenticated;
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
+  BEGIN
+    UPDATE public.contextual_entries SET user_id = user_b_id WHERE id = user_a_context;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  RESET role;
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_entries WHERE id = user_a_context AND user_id = user_b_id;
+  ASSERT result_count = 0,
+    'ÉCHEC TEST 13 : user_a a pu transférer une ligne contextual_entries vers user_b';
+  RAISE NOTICE 'TEST 13 PASSÉ : transfert contextual_entries bloqué';
+
+  -- TEST 14 : sans consentement screen_time, user_a ne peut pas écrire le temps d'écran
+  SET LOCAL role TO authenticated;
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
+  BEGIN
+    UPDATE public.contextual_entries
+    SET screen_total_min = 180, screen_source = 'manual'
+    WHERE id = user_a_context;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  RESET role;
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_entries
+  WHERE id = user_a_context AND screen_total_min IS NOT NULL;
+  ASSERT result_count = 0,
+    'ÉCHEC TEST 14 : user_a a pu écrire screen_time sans consentement actif';
+  RAISE NOTICE 'TEST 14 PASSÉ : écriture screen_time sans consentement bloquée';
+
+  RAISE NOTICE '✅ Tous les tests RLS sont passés (14/14).';
 
 EXCEPTION WHEN OTHERS THEN
   RESET role;

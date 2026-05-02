@@ -6,6 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
 import "./global.css";
 import { useAuthListener, useAuth } from "@/hooks/useAuth";
+import { useContextualConsentsLoader } from "@/hooks/useContextualConsents";
 import { supabase } from "@/lib/supabase";
 import { biometricService } from "@/services/biometric.service";
 import { AppLockOverlay } from "@/components/layout/AppLockOverlay";
@@ -18,6 +19,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useAuthListener();
+  useContextualConsentsLoader();
   const { session, isLoading, isRecovery, setRecovery, lockEnabled, setLockEnabled } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
   const [lockChecked, setLockChecked] = useState(false);

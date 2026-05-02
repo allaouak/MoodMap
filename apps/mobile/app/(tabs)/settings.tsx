@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Share,
 } from "react-native";
+import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/services/auth.service";
@@ -20,6 +22,13 @@ import {
   NotificationPrefs,
 } from "@/services/notification.service";
 import { biometricService } from "@/services/biometric.service";
+import { useContextualStore } from "@/stores/contextual.store";
+import { contextualConsentService } from "@/services/contextual-consent.service";
+import { sleepService } from "@/services/sleep.service";
+import { activityService } from "@/services/activity.service";
+import { dataExportService } from "@/services/data-export.service";
+import type { ContextualModule } from "@/types/contextual";
+import { isExpoGo } from "@/utils/runtime";
 
 const TIME_OPTIONS = [
   { label: "8h00", hour: 8, minute: 0 },
@@ -29,9 +38,29 @@ const TIME_OPTIONS = [
   { label: "21h30", hour: 21, minute: 30 },
 ];
 
+const MODULE_LABEL: Record<ContextualModule, string> = {
+  sleep: "Sommeil",
+  activity: "Activité physique",
+  screen_time: "Temps d'écran",
+};
+
+const MODULE_DESC: Record<ContextualModule, string> = {
+  sleep: "Durée et heure de réveil depuis l'app Santé",
+  activity: "Pas et minutes actives depuis l'app Santé",
+  screen_time: "Saisie manuelle lors du check-in",
+};
+
+const MODULE_EXPLAIN: Record<ContextualModule, string> = {
+  sleep: "MoodMap va lire tes données de sommeil depuis l'app Santé pour enrichir ton journal. Ces données restent sur ton compte et ne sont jamais partagées.",
+  activity: "MoodMap va lire ton nombre de pas et tes minutes d'activité depuis l'app Santé. Ces données restent sur ton compte et ne sont jamais partagées.",
+  screen_time: "Tu pourras saisir ton temps d'écran manuellement lors de chaque check-in. Aucun accès aux apps ou à l'historique n'est demandé.",
+};
+
 export default function SettingsScreen() {
   const { profile, session, user, setProfile } = useAuth();
   const { reset, setLockEnabled: setGlobalLockEnabled } = useAuthStore();
+  const { consents, setConsent } = useContextualStore();
+  const [consentSaving, setConsentSaving] = useState(false);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [saving, setSaving] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(false);
@@ -42,6 +71,7 @@ export default function SettingsScreen() {
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [editNameLoading, setEditNameLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     notificationService.getPrefs().then(setPrefs);
@@ -104,6 +134,94 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleConsentToggle = async (module: ContextualModule, enabled: boolean) => {
+    if (!user) return;
+
+    if (enabled) {
+      Alert.alert(
+        `Activer : ${MODULE_LABEL[module]}`,
+        MODULE_EXPLAIN[module],
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Autoriser",
+            onPress: async () => {
+              setConsentSaving(true);
+              try {
+                if (module === "sleep") {
+                  const ok = await sleepService.requestPermission();
+                  if (!ok) {
+                    Alert.alert(
+                      "Module indisponible",
+                      isExpoGo()
+                        ? "Le sommeil nécessite une development build Expo, car HealthKit n'est pas disponible dans Expo Go."
+                        : "Autorise l'accès dans les réglages de l'app Santé."
+                    );
+                    return;
+                  }
+                } else if (module === "activity") {
+                  const ok = await activityService.requestPermission();
+                  if (!ok) {
+                    Alert.alert(
+                      "Module indisponible",
+                      isExpoGo()
+                        ? "L'activité physique nécessite une development build Expo, car les APIs santé natives ne sont pas disponibles dans Expo Go."
+                        : "Autorise l'accès dans les réglages de l'app Santé."
+                    );
+                    return;
+                  }
+                }
+                await contextualConsentService.setConsent(user.id, module, true);
+                setConsent(module, true);
+              } catch {
+                Alert.alert("Erreur", "Impossible d'activer ce module. Réessaie.");
+              } finally {
+                setConsentSaving(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        `Désactiver : ${MODULE_LABEL[module]}`,
+        "Veux-tu aussi supprimer les données déjà enregistrées ?",
+        [
+          {
+            text: "Garder les données",
+            onPress: async () => {
+              setConsentSaving(true);
+              try {
+                await contextualConsentService.setConsent(user.id, module, false);
+                setConsent(module, false);
+              } catch {
+                Alert.alert("Erreur", "Impossible de désactiver ce module. Réessaie.");
+              } finally {
+                setConsentSaving(false);
+              }
+            },
+          },
+          {
+            text: "Supprimer les données",
+            style: "destructive",
+            onPress: async () => {
+              setConsentSaving(true);
+              try {
+                await contextualConsentService.setConsent(user.id, module, false);
+                await contextualConsentService.deleteModuleData(user.id, module);
+                setConsent(module, false);
+              } catch {
+                Alert.alert("Erreur", "Impossible de désactiver ce module. Réessaie.");
+              } finally {
+                setConsentSaving(false);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
   const handleTimeSelect = async (hour: number, minute: number) => {
     if (!prefs) return;
     const next = { ...prefs, hour, minute };
@@ -134,6 +252,34 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleExportData = async () => {
+    if (!user) return;
+    setExportLoading(true);
+    try {
+      const email = session?.user?.email ?? null;
+      const fileUri = await dataExportService.writeExportFile(user.id, email);
+      const canShareFile = await Sharing.isAvailableAsync();
+
+      if (canShareFile) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "application/json",
+          dialogTitle: "Exporter mes données MoodMap",
+          UTI: "public.json",
+        });
+      } else {
+        const json = await dataExportService.buildExportJson(user.id, email);
+        await Share.share({
+          title: "Export MoodMap",
+          message: json,
+        });
+      }
+    } catch {
+      Alert.alert("Erreur", "Impossible de préparer l'export de tes données. Réessaie.");
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handleVerifyAndDelete = async () => {
@@ -306,6 +452,29 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* Données contextuelles */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Données contextuelles</Text>
+          <Text style={styles.contextualIntro}>
+            Enrichis ton journal avec des données de ton quotidien. Chaque module est indépendant et révocable.
+          </Text>
+          {(["sleep", "activity", "screen_time"] as ContextualModule[]).map((module) => (
+            <View key={module} style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Text style={styles.rowLabel}>{MODULE_LABEL[module]}</Text>
+                <Text style={styles.rowSub}>{MODULE_DESC[module]}</Text>
+              </View>
+              <Switch
+                value={consents[module]}
+                onValueChange={(v) => handleConsentToggle(module, v)}
+                trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}
+                thumbColor={consents[module] ? "#6D28D9" : "#F9FAFB"}
+                disabled={consentSaving}
+              />
+            </View>
+          ))}
+        </View>
+
         {/* Confidentialité */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Confidentialité</Text>
@@ -315,6 +484,21 @@ export default function SettingsScreen() {
             utilise Supabase comme hébergeur de données. Tu peux supprimer ton
             compte et toutes tes données via le bouton de suppression ci-dessous.
           </Text>
+          <TouchableOpacity
+            style={[styles.exportBtn, exportLoading && styles.actionDisabled]}
+            onPress={handleExportData}
+            activeOpacity={0.8}
+            disabled={exportLoading}
+          >
+            {exportLoading ? (
+              <ActivityIndicator color="#6D28D9" size="small" />
+            ) : (
+              <>
+                <Text style={styles.exportBtnLabel}>Exporter mes données</Text>
+                <Text style={styles.exportBtnSub}>Profil, humeurs et données contextuelles au format JSON</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Déconnexion */}
@@ -505,7 +689,21 @@ const styles = StyleSheet.create({
   timeChipText: { fontSize: 14, fontWeight: "600", color: "#6B7280" },
   timeChipTextSelected: { color: "#6D28D9" },
 
+  contextualIntro: { fontSize: 13, color: "#6B7280", lineHeight: 20, marginTop: -4 },
+
   privacyText: { fontSize: 13, color: "#6B7280", lineHeight: 20 },
+  exportBtn: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 14,
+    padding: 14,
+    gap: 3,
+    alignItems: "center",
+    minHeight: 62,
+    justifyContent: "center",
+  },
+  exportBtnLabel: { fontSize: 14, color: "#6D28D9", fontWeight: "700" },
+  exportBtnSub: { fontSize: 11, color: "#6B7280", textAlign: "center", lineHeight: 16 },
+  actionDisabled: { opacity: 0.6 },
 
   signOutBtn: {
     backgroundColor: "#FFFFFF",

@@ -24,8 +24,16 @@ import {
 import { fr } from "date-fns/locale";
 import { useAuthStore } from "@/stores/auth.store";
 import { moodService } from "@/services/mood.service";
+import { contextualEntryService } from "@/services/contextual-entry.service";
 import { MoodEntry, MOOD_COLOR, MOOD_EMOJI, MOOD_LABELS } from "@/types";
+import type { ContextualEntry } from "@/types/contextual";
 import { formatTime } from "@/utils/date";
+import {
+  contextualEntryForDate,
+  formatHoursFromMinutes,
+  formatSleepDuration,
+  hasContextualData,
+} from "@/utils/contextual";
 
 const DAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -46,6 +54,7 @@ export default function CalendarScreen() {
   const { user } = useAuthStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [entries, setEntries] = useState<MoodEntry[]>([]);
+  const [contextualEntries, setContextualEntries] = useState<ContextualEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Date | null>(null);
@@ -59,8 +68,14 @@ export default function CalendarScreen() {
       try {
         const from = format(startOfMonth(month), "yyyy-MM-dd");
         const to = format(endOfMonth(month), "yyyy-MM-dd");
-        const data = await moodService.getEntries(user.id, from, to);
-        if (mountedRef.current) setEntries(data);
+        const [moodData, contextualData] = await Promise.all([
+          moodService.getEntries(user.id, from, to),
+          contextualEntryService.getForDateRange(user.id, from, to),
+        ]);
+        if (mountedRef.current) {
+          setEntries(moodData);
+          setContextualEntries(contextualData);
+        }
       } catch {
         if (mountedRef.current) setError("Impossible de charger le calendrier. Vérifie ta connexion.");
       } finally {
@@ -79,6 +94,9 @@ export default function CalendarScreen() {
 
   const days = buildGrid(currentMonth);
   const selectedEntry = selected ? entryForDay(entries, selected) : undefined;
+  const selectedContextual = selected
+    ? contextualEntryForDate(contextualEntries, format(selected, "yyyy-MM-dd"))
+    : undefined;
 
   const goToPrev = () => setCurrentMonth((m) => subMonths(m, 1));
   const goToNext = () => {
@@ -247,6 +265,37 @@ export default function CalendarScreen() {
                 {selectedEntry.note && (
                   <Text style={styles.detailNote}>"{selectedEntry.note}"</Text>
                 )}
+                {hasContextualData(selectedContextual) && (
+                  <View style={styles.contextBlock}>
+                    <Text style={styles.contextTitle}>Données du jour</Text>
+                    <View style={styles.contextChips}>
+                      {selectedContextual?.sleep_duration_min != null && (
+                        <View style={styles.contextChip}>
+                          <Text style={styles.contextEmoji}>🌙</Text>
+                          <Text style={styles.contextText}>
+                            {formatSleepDuration(selectedContextual.sleep_duration_min)} sommeil
+                          </Text>
+                        </View>
+                      )}
+                      {selectedContextual?.activity_steps != null && (
+                        <View style={styles.contextChip}>
+                          <Text style={styles.contextEmoji}>👟</Text>
+                          <Text style={styles.contextText}>
+                            {selectedContextual.activity_steps.toLocaleString("fr-FR")} pas
+                          </Text>
+                        </View>
+                      )}
+                      {selectedContextual?.screen_total_min != null && (
+                        <View style={styles.contextChip}>
+                          <Text style={styles.contextEmoji}>📱</Text>
+                          <Text style={styles.contextText}>
+                            {formatHoursFromMinutes(selectedContextual.screen_total_min)} écran
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
               </View>
             ) : (
               <Text style={styles.detailEmpty}>Pas d'entrée pour ce jour.</Text>
@@ -358,6 +407,25 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 20,
   },
+  contextBlock: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+  },
+  contextTitle: { fontSize: 12, color: "#6B7280", fontWeight: "700", textTransform: "uppercase" },
+  contextChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  contextChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  contextEmoji: { fontSize: 13 },
+  contextText: { fontSize: 12, color: "#374151", fontWeight: "600" },
   detailEmpty: { fontSize: 14, color: "#9CA3AF", textAlign: "center", paddingVertical: 8 },
   errorText: { fontSize: 14, color: "#EF4444", textAlign: "center", paddingHorizontal: 16 },
 });

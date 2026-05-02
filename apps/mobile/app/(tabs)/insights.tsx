@@ -11,7 +11,10 @@ import { format, subDays, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useAuthStore } from "@/stores/auth.store";
 import { moodService } from "@/services/mood.service";
+import { contextualEntryService } from "@/services/contextual-entry.service";
 import { MoodEntry, MoodLevel, MOOD_COLOR, MOOD_EMOJI, MOOD_LABELS } from "@/types";
+import type { ContextualEntry } from "@/types/contextual";
+import { buildScreenTimeObservation } from "@/utils/contextual";
 
 interface Stats {
   avgMood: number;
@@ -19,6 +22,18 @@ interface Stats {
   avgStress: number;
   topTags: { tag: string; count: number }[];
   entries: MoodEntry[];
+}
+
+interface ContextualStats {
+  sleepAvgHours: number | null;
+  sleepCount: number;
+  sleepTotal: number;
+  stepsAvg: number | null;
+  activityCount: number;
+  activityTotal: number;
+  screenAvgHours: number | null;
+  screenCount: number;
+  screenTotal: number;
 }
 
 function computeStats(entries: MoodEntry[]): Stats {
@@ -48,6 +63,39 @@ function computeStats(entries: MoodEntry[]): Stats {
     avgStress: sum.stress / n,
     topTags,
     entries,
+  };
+}
+
+function avg(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function computeContextualStats(entries: ContextualEntry[]): ContextualStats {
+  const sleepValues = entries
+    .map((entry) => entry.sleep_duration_min)
+    .filter((value): value is number => value != null);
+  const stepValues = entries
+    .map((entry) => entry.activity_steps)
+    .filter((value): value is number => value != null);
+  const screenValues = entries
+    .map((entry) => entry.screen_total_min)
+    .filter((value): value is number => value != null);
+
+  const sleepAvg = avg(sleepValues);
+  const stepsAvg = avg(stepValues);
+  const screenAvg = avg(screenValues);
+
+  return {
+    sleepAvgHours: sleepAvg == null ? null : sleepAvg / 60,
+    sleepCount: sleepValues.length,
+    sleepTotal: entries.length,
+    stepsAvg,
+    activityCount: stepValues.length,
+    activityTotal: entries.length,
+    screenAvgHours: screenAvg == null ? null : screenAvg / 60,
+    screenCount: screenValues.length,
+    screenTotal: entries.length,
   };
 }
 
@@ -99,6 +147,9 @@ export default function InsightsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [stats7, setStats7] = useState<Stats | null>(null);
   const [stats30, setStats30] = useState<Stats | null>(null);
+  const [contextual7, setContextual7] = useState<ContextualStats | null>(null);
+  const [contextual30, setContextual30] = useState<ContextualStats | null>(null);
+  const [screenObservation, setScreenObservation] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
@@ -110,14 +161,19 @@ export default function InsightsScreen() {
       const from7 = format(subDays(new Date(), 6), "yyyy-MM-dd");
       const from30 = format(subDays(new Date(), 29), "yyyy-MM-dd");
 
-      const [e7, e30] = await Promise.all([
+      const [e7, e30, c7, c30] = await Promise.all([
         moodService.getEntries(user.id, from7, today),
         moodService.getEntries(user.id, from30, today),
+        contextualEntryService.getForDateRange(user.id, from7, today),
+        contextualEntryService.getForDateRange(user.id, from30, today),
       ]);
 
       if (mountedRef.current) {
         setStats7(computeStats(e7));
         setStats30(computeStats(e30));
+        setContextual7(computeContextualStats(c7));
+        setContextual30(computeContextualStats(c30));
+        setScreenObservation(buildScreenTimeObservation(e30, c30));
       }
     } catch {
       if (mountedRef.current) setError("Impossible de charger les tendances. Vérifie ta connexion.");
@@ -241,6 +297,64 @@ export default function InsightsScreen() {
               </View>
             )}
 
+            {/* Données contextuelles */}
+            {contextual30 && (
+              contextual30.sleepCount > 0 ||
+              contextual30.activityCount > 0 ||
+              contextual30.screenCount > 0
+            ) && (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Rythmes du quotidien</Text>
+                <Text style={styles.cardSubtitle}>Moyennes sur les données disponibles</Text>
+                <View style={styles.contextGrid}>
+                  {contextual7?.sleepAvgHours != null && (
+                    <View style={styles.contextItem}>
+                      <Text style={styles.contextEmoji}>🌙</Text>
+                      <Text style={styles.contextLabel}>Sommeil 7j</Text>
+                      <Text style={styles.contextValue}>
+                        {contextual7.sleepAvgHours.toFixed(1)} h
+                      </Text>
+                      <Text style={styles.contextMeta}>
+                        {contextual7.sleepCount}/{contextual7.sleepTotal} jour{contextual7.sleepTotal > 1 ? "s" : ""}
+                      </Text>
+                    </View>
+                  )}
+                  {contextual30.stepsAvg != null && (
+                    <View style={styles.contextItem}>
+                      <Text style={styles.contextEmoji}>👟</Text>
+                      <Text style={styles.contextLabel}>Pas 30j</Text>
+                      <Text style={styles.contextValue}>
+                        {Math.round(contextual30.stepsAvg).toLocaleString("fr-FR")}
+                      </Text>
+                      <Text style={styles.contextMeta}>
+                        {contextual30.activityCount}/{contextual30.activityTotal} jour{contextual30.activityTotal > 1 ? "s" : ""}
+                      </Text>
+                    </View>
+                  )}
+                  {contextual30.screenAvgHours != null && (
+                    <View style={styles.contextItem}>
+                      <Text style={styles.contextEmoji}>📱</Text>
+                      <Text style={styles.contextLabel}>Écran 30j</Text>
+                      <Text style={styles.contextValue}>
+                        {contextual30.screenAvgHours.toFixed(1)} h
+                      </Text>
+                      <Text style={styles.contextMeta}>
+                        {contextual30.screenCount}/{contextual30.screenTotal} jour{contextual30.screenTotal > 1 ? "s" : ""}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {screenObservation && (
+                  <View style={styles.observationBox}>
+                    <Text style={styles.observationText}>{screenObservation}</Text>
+                  </View>
+                )}
+                <Text style={styles.contextHint}>
+                  Ces repères restent descriptifs : ils aident à observer tes rythmes sans conclure à une cause.
+                </Text>
+              </View>
+            )}
+
             {/* Message d'humeur globale */}
             {stats30 && stats30.entries.length > 0 && (
               <View style={[styles.moodSummary, { borderColor: MOOD_COLOR[moodLevelFor(stats30.avgMood)] + "40" }]}>
@@ -338,6 +452,34 @@ const styles = StyleSheet.create({
   tagChipTextTop: { color: "#6D28D9" },
   tagChipCount: { fontSize: 11, color: "#9CA3AF" },
   tagChipCountTop: { color: "#9B6EFF" },
+
+  contextGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  contextItem: {
+    flexBasis: "31%",
+    flexGrow: 1,
+    minWidth: 96,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+  },
+  contextEmoji: { fontSize: 20 },
+  contextLabel: {
+    fontSize: 10,
+    color: "#9CA3AF",
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  contextValue: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
+  contextMeta: { fontSize: 10, color: "#9CA3AF", fontWeight: "500" },
+  observationBox: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  observationText: { fontSize: 13, color: "#374151", lineHeight: 19 },
+  contextHint: { fontSize: 12, color: "#6B7280", lineHeight: 18 },
 
   moodSummary: {
     backgroundColor: "#FFFFFF",
