@@ -30,10 +30,12 @@ BEGIN
      now(), now(), now(), '{}', '{}', false);
 
   -- 2. Profils pour les deux utilisateurs (mood_entries.user_id → profiles.id)
+  -- ON CONFLICT car le trigger handle_new_user crée déjà le profil à l'insert auth.users
   INSERT INTO public.profiles (id, timezone, premium)
   VALUES
     (user_a_id, 'Europe/Paris', false),
-    (user_b_id, 'Europe/Paris', false);
+    (user_b_id, 'Europe/Paris', false)
+  ON CONFLICT (id) DO UPDATE SET timezone = EXCLUDED.timezone, premium = EXCLUDED.premium;
 
   -- 3. Une entrée d'humeur par utilisateur
   INSERT INTO public.mood_entries (user_id, mood, energy, stress, tags, entry_date)
