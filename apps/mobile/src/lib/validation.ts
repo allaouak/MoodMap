@@ -57,6 +57,7 @@ export const updateProfileSchema = z.object({
     .min(2, "Minimum 2 caractères")
     .max(50, "Maximum 50 caractères")
     .optional(),
+  avatar_url: z.string().url("URL invalide").nullable().optional(),
   timezone: z
     .string()
     .refine(isValidIANATimezone, "Timezone IANA invalide")

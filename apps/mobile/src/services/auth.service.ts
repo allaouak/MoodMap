@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { Profile } from "@/types";
+import { updateProfileSchema } from "@/lib/validation";
 
 export const authService = {
   async signUp(
@@ -72,9 +73,10 @@ export const authService = {
     userId: string,
     updates: Partial<Pick<Profile, "display_name" | "avatar_url" | "timezone">>
   ): Promise<Profile> {
+    const validated = updateProfileSchema.parse(updates);
     const { data, error } = await supabase
       .from("profiles")
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...validated, updated_at: new Date().toISOString() })
       .eq("id", userId)
       .select()
       .single();

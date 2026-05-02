@@ -1,11 +1,18 @@
 import * as Sentry from "@sentry/react-native";
 import type { ErrorEvent, EventHint } from "@sentry/core";
 
-const SENSITIVE_KEYS = new Set([
-  "mood", "energy", "stress", "note", "tags", "entry_date",
-  "display_name", "avatar_url", "email", "password",
-  "access_token", "refresh_token", "token", "code", "user_id", "sub",
+// Clés normalisées : lowercase, underscores et tirets supprimés.
+// Couvre snake_case ET camelCase : entry_date/entryDate, display_name/displayName, etc.
+const SENSITIVE_KEYS_NORMALIZED = new Set([
+  "mood", "energy", "stress", "note", "tags", "entrydate",
+  "displayname", "avatarurl", "email",
+  "password", "newpassword", "confirmpassword",
+  "accesstoken", "refreshtoken", "token", "code", "userid", "sub",
 ]);
+
+function isSensitiveKey(k: string): boolean {
+  return SENSITIVE_KEYS_NORMALIZED.has(k.toLowerCase().replace(/[_-]/g, ""));
+}
 
 // Patterns pour redacter les PII dans les chaînes libres (messages d'erreur, exceptions)
 const PII_PATTERNS: RegExp[] = [
@@ -35,7 +42,7 @@ export function scrubRecursive(value: unknown, depth = 0): unknown {
   }
   const result: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    result[k] = SENSITIVE_KEYS.has(k.toLowerCase())
+    result[k] = isSensitiveKey(k)
       ? "[Filtered]"
       : scrubRecursive(v, depth + 1);
   }

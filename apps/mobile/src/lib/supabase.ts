@@ -10,11 +10,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// WHEN_UNLOCKED_THIS_DEVICE_ONLY : accessible uniquement déverrouillé,
+// non sauvegardé iCloud/adb — adapté aux tokens de session sensibles.
+const STORE_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
+
 const ExpoSecureStoreAdapter = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
+  getItem: (key: string) => SecureStore.getItemAsync(key, STORE_OPTIONS),
   setItem: (key: string, value: string) =>
-    SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+    SecureStore.setItemAsync(key, value, STORE_OPTIONS),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key, STORE_OPTIONS),
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
