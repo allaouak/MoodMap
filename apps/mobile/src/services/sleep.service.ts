@@ -2,6 +2,29 @@ import { Platform } from "react-native";
 import type { SleepData } from "@/types/contextual";
 import { isExpoGo } from "@/utils/runtime";
 
+const HK_SLEEP_IDENTIFIER = "HKCategoryTypeIdentifierSleepAnalysis";
+const ASLEEP_VALUES = new Set([1, 3, 4, 5]);
+
+interface HealthKitCategorySample {
+  startDate: Date | string;
+  endDate: Date | string;
+  value: number;
+}
+
+interface HealthKitSleepModule {
+  isHealthDataAvailableAsync?: () => Promise<boolean>;
+  isHealthDataAvailable?: () => boolean;
+  requestAuthorization: (request: { toRead: readonly string[] }) => Promise<boolean>;
+  queryCategorySamples: (
+    identifier: typeof HK_SLEEP_IDENTIFIER,
+    options: {
+      filter: { date: { startDate: Date; endDate: Date; strictStartDate?: boolean; strictEndDate?: boolean } };
+      limit: number;
+      ascending?: boolean;
+    }
+  ) => Promise<readonly HealthKitCategorySample[]>;
+}
+
 function sleepQualityFromMinutes(min: number): 1 | 2 | 3 | 4 | 5 {
   if (min >= 450) return 5;
   if (min >= 360) return 4;
@@ -12,6 +35,10 @@ function sleepQualityFromMinutes(min: number): 1 | 2 | 3 | 4 | 5 {
 
 function toHHMM(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
 }
 
 // Fenêtre de recherche du sommeil : veille 18h → jour J 12h
@@ -25,19 +52,26 @@ function sleepWindow(dateISO: string): { start: Date; end: Date } {
   return { start, end };
 }
 
+async function loadHealthKit(): Promise<HealthKitSleepModule> {
+  const mod = await import("@kingstinct/react-native-healthkit");
+  return mod as unknown as HealthKitSleepModule;
+}
+
 export const sleepService = {
   async requestPermission(): Promise<boolean> {
     if (isExpoGo()) return false;
 
     try {
       if (Platform.OS === 'ios') {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const HK = require('@kingstinct/react-native-healthkit');
-        await HK.default.requestAuthorization(
-          [],
-          [HK.HKCategoryTypeIdentifier.sleepAnalysis]
-        );
-        return true;
+        const HK = await loadHealthKit();
+        const available = HK.isHealthDataAvailableAsync
+          ? await HK.isHealthDataAvailableAsync()
+          : HK.isHealthDataAvailable?.() ?? false;
+        if (!available) return false;
+
+        return HK.requestAuthorization({
+          toRead: [HK_SLEEP_IDENTIFIER],
+        });
       }
       if (Platform.OS === 'android') {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -61,25 +95,31 @@ export const sleepService = {
       const { start, end } = sleepWindow(dateISO);
 
       if (Platform.OS === 'ios') {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const HK = require('@kingstinct/react-native-healthkit');
-        const samples: Array<{ startDate: string; endDate: string; value: number }> =
-          await HK.default.queryCategorySamples(
-            HK.HKCategoryTypeIdentifier.sleepAnalysis,
-            { from: start, to: end }
-          );
+        const HK = await loadHealthKit();
+        const samples = await HK.queryCategorySamples(HK_SLEEP_IDENTIFIER, {
+          filter: {
+            date: {
+              startDate: start,
+              endDate: end,
+              strictStartDate: false,
+              strictEndDate: false,
+            },
+          },
+          limit: 0,
+          ascending: true,
+        });
 
         // value 1 = AsleepUnspecified, 3 = AsleepCore, 4 = AsleepDeep, 5 = AsleepREM
-        const asleepSamples = samples.filter((s) => s.value !== 0 && s.value !== 2);
+        const asleepSamples = samples.filter((s) => ASLEEP_VALUES.has(s.value));
         if (asleepSamples.length === 0) return null;
 
         const totalMs = asleepSamples.reduce((acc, s) => {
-          return acc + (new Date(s.endDate).getTime() - new Date(s.startDate).getTime());
+          return acc + (toDate(s.endDate).getTime() - toDate(s.startDate).getTime());
         }, 0);
 
         const durationMin = Math.round(totalMs / 60000);
-        const bedtime = new Date(Math.min(...asleepSamples.map((s) => new Date(s.startDate).getTime())));
-        const wakeTime = new Date(Math.max(...asleepSamples.map((s) => new Date(s.endDate).getTime())));
+        const bedtime = new Date(Math.min(...asleepSamples.map((s) => toDate(s.startDate).getTime())));
+        const wakeTime = new Date(Math.max(...asleepSamples.map((s) => toDate(s.endDate).getTime())));
 
         return {
           duration_min: durationMin,
