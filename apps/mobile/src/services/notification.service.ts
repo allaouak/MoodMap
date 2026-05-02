@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
+import { z } from "zod";
 
 const PREF_KEY = "notification_prefs";
 
@@ -8,6 +9,12 @@ export interface NotificationPrefs {
   hour: number;
   minute: number;
 }
+
+const notificationPrefsSchema = z.object({
+  enabled: z.boolean(),
+  hour: z.number().int().min(0).max(23),
+  minute: z.number().int().min(0).max(59),
+});
 
 const DEFAULT_PREFS: NotificationPrefs = {
   enabled: false,
@@ -30,7 +37,8 @@ export const notificationService = {
     try {
       const raw = await SecureStore.getItemAsync(PREF_KEY);
       if (!raw) return DEFAULT_PREFS;
-      return JSON.parse(raw) as NotificationPrefs;
+      const parsed = notificationPrefsSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : DEFAULT_PREFS;
     } catch {
       return DEFAULT_PREFS;
     }

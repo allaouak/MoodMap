@@ -18,28 +18,37 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useAuthListener();
-  const { session, isLoading, isRecovery } = useAuth();
+  const { session, isLoading, isRecovery, setRecovery, lockEnabled, setLockEnabled } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
   const [lockChecked, setLockChecked] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  // Cache synchrone du statut verrou — évite un await dans le handler AppState
+  const lockEnabledRef = useRef(false);
 
   // Vérification du verrou au démarrage — avant d'afficher le contenu sensible
   useEffect(() => {
     biometricService.getLockEnabled().then((enabled) => {
+      lockEnabledRef.current = enabled;
+      setLockEnabled(enabled);
       if (enabled) setIsLocked(true);
       setLockChecked(true);
     });
-  }, []);
+  }, [setLockEnabled]);
 
-  // Verrouillage au passage en arrière-plan
+  // Maintenir le ref en sync quand l'utilisateur active/désactive le verrou dans Settings
   useEffect(() => {
-    const sub = AppState.addEventListener("change", async (nextState) => {
-      const wasActive = appStateRef.current === "active";
-      const goingBackground = nextState.match(/inactive|background/);
+    lockEnabledRef.current = lockEnabled;
+  }, [lockEnabled]);
 
-      if (wasActive && goingBackground) {
-        const lockEnabled = await biometricService.getLockEnabled();
-        if (lockEnabled) setIsLocked(true);
+  // Verrouillage dès "inactive" — iOS prend le snapshot multitâche à ce stade,
+  // avant "background". Le ref évite tout await qui retarderait l'overlay.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      const wasActive = appStateRef.current === "active";
+      const goingInactive = nextState === "inactive" || nextState === "background";
+
+      if (wasActive && goingInactive && lockEnabledRef.current) {
+        setIsLocked(true);
       }
 
       appStateRef.current = nextState;
@@ -75,7 +84,10 @@ export default function RootLayout() {
       if (!code || !/^[A-Za-z0-9._~-]{10,512}$/.test(code)) return;
 
       try {
-        await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        // Force isRecovery même si onAuthStateChange émet SIGNED_IN au lieu de
+        // PASSWORD_RECOVERY (edge case Supabase sur cold start ou token déjà échangé).
+        if (!error && data.session) setRecovery(true);
       } catch {
         // Token invalide ou expiré — onAuthStateChange ne fired pas
       }
@@ -89,7 +101,7 @@ export default function RootLayout() {
     });
 
     return () => subscription.remove();
-  }, []);
+  }, [setRecovery]);
 
   // Redirection selon l'état d'auth — attend aussi que le verrou soit vérifié
   useEffect(() => {

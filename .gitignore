@@ -11,3 +11,5 @@ build/
 ios/
 android/
 .supabase/
+supabase/.temp/
+apps/mobile/supabase/.temp/

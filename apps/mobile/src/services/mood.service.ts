@@ -1,10 +1,20 @@
 import { supabase } from "@/lib/supabase";
 import { CreateMoodEntryInput, MoodEntry } from "@/types";
-import { format } from "date-fns";
+import { todayISOInTimezone } from "@/utils/date";
+import { z } from "zod";
+
+const entryInputSchema = z.object({
+  mood: z.number().int().min(1).max(5),
+  energy: z.number().int().min(1).max(5),
+  stress: z.number().int().min(1).max(5),
+  note: z.string().trim().max(500).nullish().transform((v) => v ?? null),
+  tags: z.array(z.string().trim().min(1).max(30)).max(10).optional().transform((v) => v ?? []),
+  entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
 
 export const moodService = {
-  async getTodayEntry(userId: string): Promise<MoodEntry | null> {
-    const today = format(new Date(), "yyyy-MM-dd");
+  async getTodayEntry(userId: string, timezone = "UTC"): Promise<MoodEntry | null> {
+    const today = todayISOInTimezone(timezone);
     const { data, error } = await supabase
       .from("mood_entries")
       .select("*")
@@ -37,16 +47,17 @@ export const moodService = {
     userId: string,
     input: CreateMoodEntryInput
   ): Promise<MoodEntry> {
+    const validated = entryInputSchema.parse(input);
     const { data, error } = await supabase
       .from("mood_entries")
       .insert({
         user_id: userId,
-        mood: input.mood,
-        energy: input.energy,
-        stress: input.stress,
-        note: input.note ?? null,
-        tags: input.tags ?? [],
-        entry_date: input.entry_date,
+        mood: validated.mood,
+        energy: validated.energy,
+        stress: validated.stress,
+        note: validated.note,
+        tags: validated.tags,
+        entry_date: validated.entry_date,
       })
       .select()
       .single();
@@ -60,10 +71,11 @@ export const moodService = {
     userId: string,
     input: Partial<CreateMoodEntryInput>
   ): Promise<MoodEntry> {
+    const validated = entryInputSchema.partial().parse(input);
     const { data, error } = await supabase
       .from("mood_entries")
       .update({
-        ...input,
+        ...validated,
         updated_at: new Date().toISOString(),
       })
       .eq("id", entryId)

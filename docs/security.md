@@ -62,7 +62,7 @@ Toutes les tables applicatives ont RLS activé. Politiques en place :
 - Préférence stockée dans SecureStore (pas en mémoire seule).
 - Vérifié **au démarrage** avant d'afficher le contenu des tabs.
 - Activé automatiquement au passage en arrière-plan.
-- Requis également avant la suppression de compte.
+- La suppression de compte requiert une **confirmation par mot de passe** (re-authentification Supabase), indépendamment du verrou biométrique. Ce choix est délibéré : le mot de passe est un facteur « ce que tu sais » qui résiste à la coercition physique, contrairement à la biométrie.
 
 ---
 
@@ -81,7 +81,7 @@ Toutes les tables applicatives ont RLS activé. Politiques en place :
 | Élévation de privilège (premium) | Trigger + JWT role check + `set_user_premium` service_role only |
 | Accès aux données d'un autre utilisateur | RLS `auth.uid()` sur toutes les tables |
 | Injection via URL scheme | Parsing strict + validation regex du code PKCE |
-| Suppression de compte malveillante | Ré-authentification biométrique obligatoire |
+| Suppression de compte malveillante | Confirmation par mot de passe (ré-authentification Supabase) |
 | Fuite via messages d'erreur | Messages génériques côté client |
 | Enumération d'emails | Message d'erreur identique succès/échec sur forgot-password |
 

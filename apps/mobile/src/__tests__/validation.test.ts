@@ -135,4 +135,30 @@ describe("checkInSchema", () => {
   it("accepte exactement 500 caractères", () => {
     expect(checkInSchema.safeParse({ ...valid, note: "a".repeat(500) }).success).toBe(true);
   });
+
+  it("accepte des tags valides", () => {
+    expect(checkInSchema.safeParse({ ...valid, tags: ["travail", "sport"] }).success).toBe(true);
+  });
+
+  it("accepte l'absence de tags", () => {
+    expect(checkInSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejette plus de 10 tags", () => {
+    const tags = Array.from({ length: 11 }, (_, i) => `tag${i}`);
+    expect(checkInSchema.safeParse({ ...valid, tags }).success).toBe(false);
+  });
+
+  it("rejette un tag vide", () => {
+    expect(checkInSchema.safeParse({ ...valid, tags: [""] }).success).toBe(false);
+  });
+
+  it("rejette un tag dépassant 30 caractères", () => {
+    expect(checkInSchema.safeParse({ ...valid, tags: ["a".repeat(31)] }).success).toBe(false);
+  });
+
+  it("accepte exactement 10 tags", () => {
+    const tags = Array.from({ length: 10 }, (_, i) => `tag${i}`);
+    expect(checkInSchema.safeParse({ ...valid, tags }).success).toBe(true);
+  });
 });

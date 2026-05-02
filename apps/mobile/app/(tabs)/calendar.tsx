@@ -47,6 +47,7 @@ export default function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [entries, setEntries] = useState<MoodEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Date | null>(null);
   const mountedRef = useRef(true);
 
@@ -54,11 +55,14 @@ export default function CalendarScreen() {
     async (month: Date) => {
       if (!user) return;
       setLoading(true);
+      setError(null);
       try {
         const from = format(startOfMonth(month), "yyyy-MM-dd");
         const to = format(endOfMonth(month), "yyyy-MM-dd");
         const data = await moodService.getEntries(user.id, from, to);
         if (mountedRef.current) setEntries(data);
+      } catch {
+        if (mountedRef.current) setError("Impossible de charger le calendrier. Vérifie ta connexion.");
       } finally {
         if (mountedRef.current) setLoading(false);
       }
@@ -92,8 +96,14 @@ export default function CalendarScreen() {
       >
         {/* Header mois */}
         <View style={styles.monthHeader}>
-          <TouchableOpacity onPress={goToPrev} style={styles.navBtn} activeOpacity={0.7}>
-            <Text style={styles.navArrow}>‹</Text>
+          <TouchableOpacity
+            onPress={goToPrev}
+            style={styles.navBtn}
+            activeOpacity={0.7}
+            accessibilityLabel="Mois précédent"
+            accessibilityRole="button"
+          >
+            <Text style={styles.navArrow} accessibilityElementsHidden>‹</Text>
           </TouchableOpacity>
           <Text style={styles.monthTitle}>
             {format(currentMonth, "MMMM yyyy", { locale: fr })}
@@ -103,8 +113,11 @@ export default function CalendarScreen() {
             style={[styles.navBtn, !canGoNext && styles.navBtnDisabled]}
             activeOpacity={0.7}
             disabled={!canGoNext}
+            accessibilityLabel="Mois suivant"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canGoNext }}
           >
-            <Text style={[styles.navArrow, !canGoNext && styles.navArrowDisabled]}>›</Text>
+            <Text style={[styles.navArrow, !canGoNext && styles.navArrowDisabled]} accessibilityElementsHidden>›</Text>
           </TouchableOpacity>
         </View>
 
@@ -122,6 +135,10 @@ export default function CalendarScreen() {
           <View style={styles.loader}>
             <ActivityIndicator color="#6D28D9" />
           </View>
+        ) : error ? (
+          <View style={styles.loader}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
         ) : (
           <View style={styles.grid}>
             {days.map((day) => {
@@ -130,6 +147,10 @@ export default function CalendarScreen() {
               const today = isToday(day);
               const isSelected = selected ? isSameDay(day, selected) : false;
               const color = entry ? MOOD_COLOR[entry.mood] : null;
+
+              const a11yLabel = inMonth
+                ? `${format(day, "d MMMM", { locale: fr })}${entry ? `, humeur : ${MOOD_LABELS[entry.mood]}` : ", aucune entrée"}`
+                : undefined;
 
               return (
                 <TouchableOpacity
@@ -142,6 +163,9 @@ export default function CalendarScreen() {
                   activeOpacity={0.7}
                   onPress={() => setSelected(isSameDay(day, selected ?? new Date(0)) ? null : day)}
                   disabled={!inMonth}
+                  accessibilityLabel={a11yLabel}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
                 >
                   <Text
                     style={[
@@ -150,13 +174,17 @@ export default function CalendarScreen() {
                       today && styles.dayNumberToday,
                       isSelected && styles.dayNumberSelected,
                     ]}
+                    accessibilityElementsHidden
                   >
                     {format(day, "d")}
                   </Text>
                   {color && inMonth ? (
-                    <View style={[styles.moodDot, { backgroundColor: color }]} />
+                    <View
+                      style={[styles.moodDot, { backgroundColor: color }]}
+                      accessibilityElementsHidden
+                    />
                   ) : (
-                    <View style={styles.moodDotEmpty} />
+                    <View style={styles.moodDotEmpty} accessibilityElementsHidden />
                   )}
                 </TouchableOpacity>
               );
@@ -183,7 +211,7 @@ export default function CalendarScreen() {
             {selectedEntry ? (
               <View style={styles.detailContent}>
                 <View style={styles.detailMoodRow}>
-                  <Text style={styles.detailEmoji}>{MOOD_EMOJI[selectedEntry.mood]}</Text>
+                  <Text style={styles.detailEmoji} accessibilityElementsHidden importantForAccessibility="no">{MOOD_EMOJI[selectedEntry.mood]}</Text>
                   <View style={styles.detailMoodInfo}>
                     <Text style={styles.detailMoodLabel}>
                       {MOOD_LABELS[selectedEntry.mood]}
@@ -331,4 +359,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   detailEmpty: { fontSize: 14, color: "#9CA3AF", textAlign: "center", paddingVertical: 8 },
+  errorText: { fontSize: 14, color: "#EF4444", textAlign: "center", paddingHorizontal: 16 },
 });

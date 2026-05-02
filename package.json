@@ -16,7 +16,9 @@
       "react": "19.1.4",
       "react-native": "0.81.6",
       "@react-navigation/bottom-tabs": "7.4.9",
-      "@react-navigation/elements": "2.6.5"
+      "@react-navigation/elements": "2.6.5",
+      "uuid": ">=14.0.0",
+      "postcss": ">=8.5.10"
     }
   }
 }

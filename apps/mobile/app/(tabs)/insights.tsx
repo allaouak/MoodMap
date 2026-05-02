@@ -96,6 +96,7 @@ function MiniBar({ entry }: { entry: MoodEntry }) {
 export default function InsightsScreen() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [stats7, setStats7] = useState<Stats | null>(null);
   const [stats30, setStats30] = useState<Stats | null>(null);
   const mountedRef = useRef(true);
@@ -103,6 +104,7 @@ export default function InsightsScreen() {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setError(null);
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       const from7 = format(subDays(new Date(), 6), "yyyy-MM-dd");
@@ -117,6 +119,8 @@ export default function InsightsScreen() {
         setStats7(computeStats(e7));
         setStats30(computeStats(e30));
       }
+    } catch {
+      if (mountedRef.current) setError("Impossible de charger les tendances. Vérifie ta connexion.");
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -133,6 +137,16 @@ export default function InsightsScreen() {
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.loader}>
           <ActivityIndicator color="#6D28D9" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.loader}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -336,4 +350,5 @@ const styles = StyleSheet.create({
   },
   moodSummaryEmoji: { fontSize: 32 },
   moodSummaryText: { flex: 1, fontSize: 14, color: "#374151", lineHeight: 20 },
+  errorText: { fontSize: 14, color: "#EF4444", textAlign: "center", paddingHorizontal: 16 },
 });

@@ -4,7 +4,7 @@ import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
 
 export function useAuthListener() {
-  const { setSession, setProfile, setLoading, setRecovery } = useAuthStore();
+  const { setSession, setProfile, setProfileError, setLoading, setRecovery } = useAuthStore();
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -24,7 +24,7 @@ export function useAuthListener() {
             const profile = await authService.getProfile(session.user.id);
             setProfile(profile);
           } catch {
-            // Profil non bloquant
+            setProfileError(true);
           } finally {
             setLoading(false);
           }
@@ -36,7 +36,7 @@ export function useAuthListener() {
     );
 
     return () => listener.subscription.unsubscribe();
-  }, [setSession, setProfile, setLoading, setRecovery]);
+  }, [setSession, setProfile, setProfileError, setLoading, setRecovery]);
 }
 
 export function useAuth() {

@@ -88,10 +88,15 @@ BEGIN
 
   -- TEST 5 : user_a ne peut pas changer le user_id d'une entrée (WITH CHECK)
   -- Régression : bug corrigé dans migration 20260502100000
+  -- WITH CHECK lève une exception 42501 (pas un blocage silencieux) — on la capture.
   SET LOCAL role TO authenticated;
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
-  UPDATE public.mood_entries SET user_id = user_b_id WHERE id = user_a_entry;
+  BEGIN
+    UPDATE public.mood_entries SET user_id = user_b_id WHERE id = user_a_entry;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
   RESET role;
   SELECT COUNT(*) INTO result_count
   FROM public.mood_entries WHERE id = user_a_entry AND user_id = user_b_id;
@@ -120,6 +125,8 @@ BEGIN
 
   -- TEST 8 : service_role peut mettre à jour premium via set_user_premium()
   RESET role;
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('role', 'service_role')::text, true);
   PERFORM public.set_user_premium(user_a_id, true);
   SELECT COUNT(*) INTO result_count
   FROM public.profiles WHERE id = user_a_id AND premium = true;

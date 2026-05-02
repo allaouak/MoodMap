@@ -13,7 +13,7 @@ import { MoodSlider } from "@/components/mood/MoodSlider";
 import { Button } from "@/components/ui/Button";
 import { moodService } from "@/services/mood.service";
 import { MoodEntry, MoodLevel, EnergyLevel, StressLevel } from "@/types";
-import { todayISO } from "@/utils/date";
+import { todayISOInTimezone } from "@/utils/date";
 import { checkInSchema } from "@/lib/validation";
 
 const MAX_TAGS = 10;
@@ -27,12 +27,13 @@ const SUGGESTED_TAGS = [
 
 interface MoodCheckInProps {
   userId: string;
+  timezone?: string;
   existingEntry?: MoodEntry | null;
   onSaved: (entry: MoodEntry) => void;
   onCancel?: () => void;
 }
 
-export function MoodCheckIn({ userId, existingEntry, onSaved, onCancel }: MoodCheckInProps) {
+export function MoodCheckIn({ userId, timezone = "UTC", existingEntry, onSaved, onCancel }: MoodCheckInProps) {
   const [loading, setLoading] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>(
     existingEntry?.tags ?? []
@@ -66,7 +67,7 @@ export function MoodCheckIn({ userId, existingEntry, onSaved, onCancel }: MoodCh
         // null efface explicitement la note en base lors d'une mise à jour
         note: values.note?.trim() || null,
         tags: selectedTags,
-        entry_date: todayISO(),
+        entry_date: todayISOInTimezone(timezone),
       };
 
       let entry: MoodEntry;

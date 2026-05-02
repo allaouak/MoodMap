@@ -293,3 +293,140 @@ Les appels IA doivent être limités, optimisés et réservés en priorité aux 
 ├── .env.example
 ├── README.md
 └── CLAUDE.md
+
+---
+
+# Modules contextuels avancés
+
+MoodMap peut intégrer des données contextuelles liées au sommeil, à l'activité physique, au temps d'écran et à l'environnement sonore.
+
+Ces données sont considérées comme sensibles.
+
+## Règle fondamentale
+
+Aucune donnée contextuelle ne doit être collectée sans consentement explicite, granulaire et révocable.
+
+L'utilisateur doit pouvoir activer ou désactiver séparément :
+
+- suivi du sommeil
+- suivi de l'activité physique
+- suivi du temps d'écran
+- suivi du niveau sonore
+- analyse IA de ces données
+
+## Données autorisées au MVP
+
+### Sommeil
+
+Stocker uniquement :
+
+- durée de sommeil
+- heure de coucher
+- heure de réveil
+- qualité subjective
+- source de la donnée
+
+Ne pas stocker au MVP :
+
+- fréquence cardiaque
+- oxygénation
+- respiration
+- phases détaillées de sommeil
+
+### Activité physique
+
+Stocker uniquement :
+
+- nombre de pas
+- minutes actives
+- minutes d'entraînement
+- niveau d'activité agrégé
+- source de la donnée
+
+Ne pas stocker au MVP :
+
+- GPS
+- itinéraires
+- localisation
+- données biométriques avancées
+
+### Temps d'écran
+
+Stocker uniquement :
+
+- temps d'écran total
+- temps par grande catégorie
+- nombre approximatif de pickups si disponible
+
+Ne pas stocker au MVP :
+
+- historique détaillé app par app
+- contenu consulté
+- noms précis d'applications sans consentement explicite
+
+### Niveau sonore
+
+Stocker uniquement :
+
+- niveau sonore estimé
+- catégorie sonore
+- période agrégée
+
+Interdiction stricte :
+
+- ne jamais enregistrer l'audio
+- ne jamais stocker d'extrait audio
+- ne jamais envoyer d'audio au backend
+- ne jamais envoyer d'audio à l'IA
+
+## Sources de données recommandées
+
+Sur iOS :
+
+- HealthKit pour sommeil et activité physique
+- Screen Time API pour temps d'écran si faisable
+- AVAudioSession / AVAudioRecorder pour estimation sonore locale
+
+Sur Android :
+
+- Health Connect pour sommeil et activité physique
+- UsageStatsManager pour temps d'écran
+- MediaRecorder ou API audio équivalente pour estimation sonore locale
+
+## Règles IA
+
+L'IA peut analyser des tendances agrégées, mais ne doit jamais recevoir plus de données que nécessaire.
+
+L'IA ne doit jamais produire de diagnostic médical ou psychologique.
+
+Formulations autorisées :
+
+- "Tes données semblent suggérer…"
+- "Une piste possible serait…"
+- "Tu pourrais observer si…"
+
+Formulations interdites :
+
+- "La cause de ton stress est…"
+- "Tu as un trouble du sommeil…"
+- "Ton état mental indique…"
+
+## Règles UX
+
+Chaque module doit expliquer clairement :
+
+- pourquoi la donnée est demandée
+- comment elle est utilisée
+- où elle est stockée
+- comment la désactiver
+- comment supprimer les données associées
+
+Les permissions doivent être demandées au moment utile, jamais au lancement de l'app.
+
+## Règle de minimisation
+
+Toujours préférer les données agrégées aux données brutes.
+
+Toujours préférer le calcul local au calcul serveur.
+
+Toujours préférer une corrélation simple et explicable à une analyse opaque.

@@ -42,9 +42,31 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+function isValidIANATimezone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const updateProfileSchema = z.object({
+  display_name: z
+    .string()
+    .min(2, "Minimum 2 caractères")
+    .max(50, "Maximum 50 caractères")
+    .optional(),
+  timezone: z
+    .string()
+    .refine(isValidIANATimezone, "Timezone IANA invalide")
+    .optional(),
+});
+
 export const checkInSchema = z.object({
   mood: z.number().int().min(1).max(5),
   energy: z.number().int().min(1).max(5),
   stress: z.number().int().min(1).max(5),
   note: z.string().trim().max(500).optional(),
+  tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
 });

@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/auth.store";
 import { useMoodStore } from "@/stores/mood.store";
 import { moodService } from "@/services/mood.service";
+import { authService } from "@/services/auth.service";
 import { TodayCard } from "@/features/mood/TodayCard";
 import { MoodCheckIn } from "@/features/mood/MoodCheckIn";
 import { MoodEntry } from "@/types";
@@ -19,20 +20,23 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export default function TodayScreen() {
-  const { user, profile } = useAuthStore();
+  const { user, profile, profileError, setProfile, setProfileError } = useAuthStore();
   const { todayEntry, setTodayEntry, isLoading, setLoading } = useMoodStore();
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  const timezone = profile?.timezone ?? "UTC";
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const entry = await moodService.getTodayEntry(user.id);
+      const entry = await moodService.getTodayEntry(user.id, timezone);
       setTodayEntry(entry);
     } finally {
       setLoading(false);
     }
-  }, [user, setTodayEntry, setLoading]);
+  }, [user, timezone, setTodayEntry, setLoading]);
 
   useEffect(() => {
     load();
@@ -43,9 +47,47 @@ export default function TodayScreen() {
     setShowCheckIn(false);
   };
 
-  const dateLabel = format(new Date(), "EEEE d MMMM", { locale: fr });
+  const handleRetryProfile = useCallback(async () => {
+    if (!user) return;
+    setRetrying(true);
+    try {
+      const p = await authService.getProfile(user.id);
+      setProfile(p);
+    } catch {
+      setProfileError(true);
+    } finally {
+      setRetrying(false);
+    }
+  }, [user, setProfile, setProfileError]);
 
+  const dateLabel = format(new Date(), "EEEE d MMMM", { locale: fr });
   const firstName = profile?.display_name?.split(" ")[0] ?? "toi";
+
+  if (profileError) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.errorState}>
+          <Text style={styles.errorEmoji}>⚠️</Text>
+          <Text style={styles.errorTitle}>Profil indisponible</Text>
+          <Text style={styles.errorSubtitle}>
+            Impossible de charger ton profil. Vérifie ta connexion.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={handleRetryProfile}
+            activeOpacity={0.8}
+            disabled={retrying}
+          >
+            {retrying ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.retryButtonText}>Réessayer</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -94,7 +136,6 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {/* Bouton d'ajout si déjà rempli — permet de modifier */}
         {todayEntry && !isLoading && (
           <View style={styles.footer}>
             <Text style={styles.footerHint}>
@@ -120,6 +161,7 @@ export default function TodayScreen() {
             {user && (
               <MoodCheckIn
                 userId={user.id}
+                timezone={timezone}
                 existingEntry={todayEntry}
                 onSaved={handleSaved}
                 onCancel={() => setShowCheckIn(false)}
@@ -133,35 +175,13 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#F8F4FF",
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 32,
-    gap: 24,
-  },
-  header: {
-    gap: 4,
-  },
-  dateText: {
-    fontSize: 13,
-    color: "#9CA3AF",
-    textTransform: "capitalize",
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  section: {
-    gap: 12,
-  },
+  safe: { flex: 1, backgroundColor: "#F8F4FF" },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, gap: 24 },
+  header: { gap: 4 },
+  dateText: { fontSize: 13, color: "#9CA3AF", textTransform: "capitalize" },
+  greeting: { fontSize: 26, fontWeight: "700", color: "#1F2937" },
+  section: { gap: 12 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "600",
@@ -169,24 +189,10 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
-  center: {
-    paddingVertical: 60,
-    alignItems: "center",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-    gap: 12,
-  },
-  emptyEmoji: {
-    fontSize: 56,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-    textAlign: "center",
-  },
+  center: { paddingVertical: 60, alignItems: "center" },
+  emptyState: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  emptyEmoji: { fontSize: 56 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
   emptySubtitle: {
     fontSize: 14,
     color: "#6B7280",
@@ -201,25 +207,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 16,
   },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
+  primaryButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+  footer: { alignItems: "center" },
+  footerHint: { fontSize: 12, color: "#9CA3AF", textAlign: "center" },
+  modalSafe: { flex: 1, backgroundColor: "#F8F4FF" },
+  modalContent: { padding: 20, paddingBottom: 40 },
+
+  errorState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 },
+  errorEmoji: { fontSize: 48 },
+  errorTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
+  errorSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 21,
   },
-  footer: {
+  retryButton: {
+    marginTop: 8,
+    backgroundColor: "#6D28D9",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    minWidth: 120,
     alignItems: "center",
   },
-  footerHint: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    textAlign: "center",
-  },
-  modalSafe: {
-    flex: 1,
-    backgroundColor: "#F8F4FF",
-  },
-  modalContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+  retryButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
 });

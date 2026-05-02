@@ -30,8 +30,8 @@ const TIME_OPTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { profile, session } = useAuth();
-  const { reset } = useAuthStore();
+  const { profile, session, user, setProfile } = useAuth();
+  const { reset, setLockEnabled: setGlobalLockEnabled } = useAuthStore();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [saving, setSaving] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(false);
@@ -39,6 +39,9 @@ export default function SettingsScreen() {
   const [deleteStep, setDeleteStep] = useState<"idle" | "otp">("idle");
   const [otpCode, setOtpCode] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+  const [editNameVisible, setEditNameVisible] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [editNameLoading, setEditNameLoading] = useState(false);
 
   useEffect(() => {
     notificationService.getPrefs().then(setPrefs);
@@ -46,29 +49,58 @@ export default function SettingsScreen() {
     biometricService.getLockEnabled().then(setLockEnabled);
   }, []);
 
+  const handleEditName = () => {
+    setEditNameValue(profile?.display_name ?? "");
+    setEditNameVisible(true);
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = editNameValue.trim();
+    if (!trimmed || !user) return;
+    setEditNameLoading(true);
+    try {
+      const updated = await authService.updateProfile(user.id, { display_name: trimmed });
+      setProfile(updated);
+      setEditNameVisible(false);
+    } catch {
+      Alert.alert("Erreur", "Impossible de mettre à jour le nom. Réessaie.");
+    } finally {
+      setEditNameLoading(false);
+    }
+  };
+
   const handleLockToggle = async (enabled: boolean) => {
     if (enabled) {
-      // Demander une authentification avant d'activer le verrou
       const ok = await biometricService.authenticate();
       if (!ok) return;
     }
-    await biometricService.setLockEnabled(enabled);
-    setLockEnabled(enabled);
+    try {
+      await biometricService.setLockEnabled(enabled);
+      setLockEnabled(enabled);
+      setGlobalLockEnabled(enabled);
+    } catch {
+      Alert.alert("Erreur", "Impossible de modifier le verrou. Réessaie.");
+    }
   };
 
   const handleToggle = async (enabled: boolean) => {
     if (!prefs) return;
     const next = { ...prefs, enabled };
     setSaving(true);
-    const ok = await notificationService.apply(next);
-    setSaving(false);
-    if (ok) {
-      setPrefs(next);
-    } else {
-      Alert.alert(
-        "Permission refusée",
-        "Autorise les notifications dans les réglages iOS pour activer les rappels."
-      );
+    try {
+      const ok = await notificationService.apply(next);
+      if (ok) {
+        setPrefs(next);
+      } else {
+        Alert.alert(
+          "Permission refusée",
+          "Autorise les notifications dans les réglages iOS pour activer les rappels."
+        );
+      }
+    } catch {
+      Alert.alert("Erreur", "Impossible de modifier les notifications. Réessaie.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -76,9 +108,14 @@ export default function SettingsScreen() {
     if (!prefs) return;
     const next = { ...prefs, hour, minute };
     setSaving(true);
-    await notificationService.apply(next);
-    setSaving(false);
-    setPrefs(next);
+    try {
+      await notificationService.apply(next);
+      setPrefs(next);
+    } catch {
+      Alert.alert("Erreur", "Impossible de mettre à jour l'heure. Réessaie.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -103,14 +140,29 @@ export default function SettingsScreen() {
     const email = session?.user?.email;
     if (!email || !otpCode.trim()) return;
     setOtpLoading(true);
+
+    // Étape 1 : ré-authentification — échec ici = mot de passe incorrect, on s'arrête
     try {
       await authService.confirmPassword(email, otpCode.trim());
-      await notificationService.cancelAll();
+    } catch {
+      Alert.alert("Mot de passe incorrect", "Vérifie ton mot de passe et réessaie.");
+      setOtpLoading(false);
+      return;
+    }
+
+    // Étape 2 : nettoyage + suppression — reset() uniquement après succès serveur confirmé
+    try {
+      try {
+        await notificationService.cancelAll();
+      } catch {
+        // Non bloquant — on continue la suppression même si les notifs ne se cancellent pas
+      }
       await authService.deleteAccount();
+      // Succès confirmé : on nettoie l'état local
       setDeleteStep("idle");
       reset();
     } catch {
-      Alert.alert("Mot de passe incorrect", "Vérifie ton mot de passe et réessaie.");
+      Alert.alert("Erreur", "La suppression a échoué côté serveur. Réessaie ou contacte le support.");
     } finally {
       setOtpLoading(false);
     }
@@ -146,14 +198,26 @@ export default function SettingsScreen() {
 
         {/* Profil */}
         <View style={styles.card}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {profile?.display_name?.[0]?.toUpperCase() ?? "?"}
-            </Text>
+          <View style={styles.profileRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {profile?.display_name?.[0]?.toUpperCase() ?? "?"}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.displayName}>
+                {profile?.display_name ?? "Utilisateur"}
+              </Text>
+              <Text style={styles.profileEmail}>{session?.user?.email}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.editNameBtn}
+              onPress={handleEditName}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.editNameBtnText}>Modifier</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.displayName}>
-            {profile?.display_name ?? "Utilisateur"}
-          </Text>
         </View>
 
         {/* Notifications */}
@@ -248,8 +312,8 @@ export default function SettingsScreen() {
           <Text style={styles.privacyText}>
             Tes données sont transmises via HTTPS et stockées dans une base
             sécurisée avec accès strictement limité à ton compte. MoodMap
-            utilise Supabase comme hébergeur de données. Tu peux demander leur
-            suppression à tout moment en contactant le support.
+            utilise Supabase comme hébergeur de données. Tu peux supprimer ton
+            compte et toutes tes données via le bouton de suppression ci-dessous.
           </Text>
         </View>
 
@@ -322,6 +386,51 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+      <Modal
+        visible={editNameVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditNameVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Modifier le nom</Text>
+            <TextInput
+              style={styles.nameInput}
+              value={editNameValue}
+              onChangeText={setEditNameValue}
+              placeholder="Ton prénom ou pseudonyme"
+              placeholderTextColor="#D1D5DB"
+              autoFocus
+              maxLength={50}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setEditNameVisible(false)}
+                disabled={editNameLoading}
+              >
+                <Text style={styles.modalCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalConfirmBtn,
+                  styles.modalConfirmBtnPrimary,
+                  (!editNameValue.trim() || editNameLoading) && styles.modalBtnDisabled,
+                ]}
+                onPress={handleSaveName}
+                disabled={!editNameValue.trim() || editNameLoading}
+              >
+                {editNameLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Enregistrer</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -340,6 +449,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
+  profileRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  profileInfo: { flex: 1, gap: 2 },
+  profileEmail: { fontSize: 12, color: "#9CA3AF" },
+  editNameBtn: {
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  editNameBtnText: { fontSize: 13, fontWeight: "600", color: "#6D28D9" },
+
   avatar: {
     width: 56,
     height: 56,
@@ -349,7 +469,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { fontSize: 24, fontWeight: "700", color: "#6D28D9" },
-  displayName: { fontSize: 18, fontWeight: "600", color: "#1F2937" },
+  displayName: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
 
   sectionTitle: {
     fontSize: 14,
@@ -448,6 +568,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#EF4444",
     alignItems: "center",
   },
+  modalConfirmBtnPrimary: { backgroundColor: "#6D28D9" },
   modalBtnDisabled: { opacity: 0.5 },
   modalConfirmText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
+  nameInput: {
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: "#1F2937",
+  },
 });
