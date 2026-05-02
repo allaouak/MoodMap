@@ -16,22 +16,9 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { resetPasswordSchema } from "@/lib/validation";
 
-const schema = z
-  .object({
-    password: z
-      .string()
-      .min(8, "Minimum 8 caractères")
-      .regex(/[A-Z]/, "Au moins une majuscule")
-      .regex(/[0-9]/, "Au moins un chiffre"),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: "Les mots de passe ne correspondent pas",
-    path: ["confirmPassword"],
-  });
-
-type Form = z.infer<typeof schema>;
+type Form = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
@@ -41,7 +28,7 @@ export default function ResetPasswordScreen() {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<Form>({ resolver: zodResolver(schema) });
+  } = useForm<Form>({ resolver: zodResolver(resetPasswordSchema) });
 
   const onSubmit = async (values: Form) => {
     try {

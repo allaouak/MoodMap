@@ -16,25 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
-
-const registerSchema = z
-  .object({
-    displayName: z
-      .string()
-      .min(2, "Minimum 2 caractères")
-      .max(50, "Maximum 50 caractères"),
-    email: z.string().email("Email invalide"),
-    password: z
-      .string()
-      .min(8, "Minimum 8 caractères")
-      .regex(/[A-Z]/, "Au moins une majuscule")
-      .regex(/[0-9]/, "Au moins un chiffre"),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: "Les mots de passe ne correspondent pas",
-    path: ["confirmPassword"],
-  });
+import { registerSchema } from "@/lib/validation";
 
 type RegisterForm = z.infer<typeof registerSchema>;
 

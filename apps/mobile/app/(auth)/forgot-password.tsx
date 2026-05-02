@@ -15,12 +15,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
+import { forgotPasswordSchema } from "@/lib/validation";
 
-const schema = z.object({
-  email: z.string().email("Email invalide"),
-});
-
-type Form = z.infer<typeof schema>;
+type Form = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
@@ -30,7 +27,7 @@ export default function ForgotPasswordScreen() {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<Form>({ resolver: zodResolver(schema) });
+  } = useForm<Form>({ resolver: zodResolver(forgotPasswordSchema) });
 
   const onSubmit = async (values: Form) => {
     try {

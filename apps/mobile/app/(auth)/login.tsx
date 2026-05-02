@@ -16,11 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
-
-const loginSchema = z.object({
-  email: z.string().email("Email invalide"),
-  password: z.string().min(8, "Minimum 8 caractères"),
-});
+import { loginSchema } from "@/lib/validation";
 
 type LoginForm = z.infer<typeof loginSchema>;
 

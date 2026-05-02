@@ -14,15 +14,9 @@ import { Button } from "@/components/ui/Button";
 import { moodService } from "@/services/mood.service";
 import { MoodEntry, MoodLevel, EnergyLevel, StressLevel } from "@/types";
 import { todayISO } from "@/utils/date";
+import { checkInSchema } from "@/lib/validation";
 
 const MAX_TAGS = 10;
-
-const checkInSchema = z.object({
-  mood: z.number().int().min(1).max(5),
-  energy: z.number().int().min(1).max(5),
-  stress: z.number().int().min(1).max(5),
-  note: z.string().trim().max(500).optional(),
-});
 
 type CheckInForm = z.infer<typeof checkInSchema>;
 
