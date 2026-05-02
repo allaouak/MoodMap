@@ -64,7 +64,14 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-local-authentication",
-      "@kingstinct/react-native-healthkit",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "background": false,
+          "NSHealthShareUsageDescription": "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
+          "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé."
+        }
+      ],
       [
         "react-native-health-connect",
         {
