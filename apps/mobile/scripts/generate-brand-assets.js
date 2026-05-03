@@ -3,6 +3,7 @@ const path = require("path");
 const { PNG } = require("pngjs");
 
 const OUT_DIR = path.join(__dirname, "..", "assets", "images");
+const IOS_ASSETS_DIR = path.join(__dirname, "..", "ios", "MoodMap", "Images.xcassets");
 
 const COLORS = {
   purple: [109, 40, 217],
@@ -192,6 +193,11 @@ function savePng(png, file) {
   fs.writeFileSync(path.join(OUT_DIR, file), PNG.sync.write(png));
 }
 
+function savePngAt(png, file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, PNG.sync.write(png));
+}
+
 function generateIcon(file, size, transparent = false) {
   const high = makeCanvas(size * 3, transparent);
   if (!transparent) drawGradientBackground(high);
@@ -205,8 +211,26 @@ function generateSplash() {
   savePng(downsample(high, 512), "splash-icon.png");
 }
 
+function generateIosAssets() {
+  const icon = makeCanvas(1024 * 3, false);
+  drawGradientBackground(icon);
+  drawMoodMapMark(icon, icon.width / 2, icon.height / 2 - icon.height * 0.02, icon.width / 1024, false);
+  savePngAt(
+    downsample(icon, 1024),
+    path.join(IOS_ASSETS_DIR, "AppIcon.appiconset", "App-Icon-1024x1024@1x.png")
+  );
+
+  const splash = makeCanvas(444 * 3, true);
+  drawMoodMapMark(splash, splash.width / 2, splash.height / 2 - 18, splash.width / 760, false);
+  const splashSet = path.join(IOS_ASSETS_DIR, "SplashScreenLegacy.imageset");
+  savePngAt(downsample(splash, 148), path.join(splashSet, "image.png"));
+  savePngAt(downsample(splash, 296), path.join(splashSet, "image@2x.png"));
+  savePngAt(downsample(splash, 444), path.join(splashSet, "image@3x.png"));
+}
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
 generateIcon("icon.png", 1024, false);
 generateIcon("adaptive-icon.png", 1024, true);
 generateIcon("favicon.png", 128, false);
 generateSplash();
+generateIosAssets();
