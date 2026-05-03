@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,18 @@ import { checkInSchema } from "@/lib/validation";
 const MAX_TAGS = 10;
 
 type CheckInForm = z.infer<typeof checkInSchema>;
+type NativeContextModule = "sleep" | "activity";
+type ContextSyncState = "idle" | "syncing" | "synced" | "empty" | "error";
+
+interface ContextSyncStatus {
+  state: ContextSyncState;
+  detail: string;
+}
+
+const INITIAL_CONTEXT_STATUS: Record<NativeContextModule, ContextSyncStatus> = {
+  sleep: { state: "idle", detail: "" },
+  activity: { state: "idle", detail: "" },
+};
 
 const SUGGESTED_TAGS = [
   "travail", "famille", "sport", "repos", "social",
@@ -53,42 +65,127 @@ export function MoodCheckIn({
   const [contextualEntry, setContextualEntry] = useState<ContextualEntry | null>(null);
   const [loadingContext, setLoadingContext] = useState(false);
   const [screenTimeInput, setScreenTimeInput] = useState("");
+  const [contextStatus, setContextStatus] =
+    useState<Record<NativeContextModule, ContextSyncStatus>>(INITIAL_CONTEXT_STATUS);
 
   const hasAnyConsent = consents.sleep || consents.activity || consents.screen_time;
   const today = todayISOInTimezone(timezone);
 
-  useEffect(() => {
-    if (!hasAnyConsent) return;
+  const updateContextStatus = useCallback(
+    (module: NativeContextModule, status: ContextSyncStatus) => {
+      setContextStatus((prev) => ({ ...prev, [module]: status }));
+    },
+    []
+  );
 
-    const init = async () => {
-      setLoadingContext(true);
-      try {
-        let entry = await contextualEntryService.getForDate(userId, today);
+  const syncContext = useCallback(async () => {
+    if (!hasAnyConsent) {
+      setContextualEntry(null);
+      setContextStatus(INITIAL_CONTEXT_STATUS);
+      return;
+    }
 
-        if (consents.sleep && !entry?.sleep_duration_min) {
-          const sleep = await sleepService.fetchForDate(today);
-          if (sleep) await contextualEntryService.saveSleep(userId, today, sleep);
+    setLoadingContext(true);
+    try {
+      let entry = await contextualEntryService.getForDate(userId, today);
+
+      if (consents.sleep) {
+        if (entry?.sleep_duration_min != null) {
+          updateContextStatus("sleep", {
+            state: "synced",
+            detail: `${formatSleepDuration(entry.sleep_duration_min)} déjà enregistré`,
+          });
+        } else {
+          updateContextStatus("sleep", { state: "syncing", detail: "Lecture de Santé..." });
+          try {
+            const sleep = await sleepService.fetchForDate(today);
+            if (sleep) {
+              await contextualEntryService.saveSleep(userId, today, sleep);
+              updateContextStatus("sleep", {
+                state: "synced",
+                detail: `${formatSleepDuration(sleep.duration_min)} détecté`,
+              });
+            } else {
+              updateContextStatus("sleep", {
+                state: "empty",
+                detail: "Aucune donnée sommeil trouvée pour cette nuit",
+              });
+            }
+          } catch {
+            updateContextStatus("sleep", {
+              state: "error",
+              detail: "Lecture du sommeil impossible pour le moment",
+            });
+          }
         }
-        if (consents.activity && !entry?.activity_steps) {
-          const activity = await activityService.fetchForDate(today);
-          if (activity) await contextualEntryService.saveActivity(userId, today, activity);
-        }
-
-        entry = await contextualEntryService.getForDate(userId, today);
-        setContextualEntry(entry);
-
-        if (entry?.screen_total_min && consents.screen_time) {
-          setScreenTimeInput(String(Math.round((entry.screen_total_min / 60) * 10) / 10));
-        }
-      } catch {
-        // optionnel — ne bloque pas le check-in
-      } finally {
-        setLoadingContext(false);
       }
-    };
 
-    init();
-  }, [consents.activity, consents.screen_time, consents.sleep, hasAnyConsent, today, userId]);
+      if (consents.activity) {
+        if (entry?.activity_steps != null) {
+          updateContextStatus("activity", {
+            state: "synced",
+            detail: `${entry.activity_steps.toLocaleString("fr-FR")} pas déjà enregistrés`,
+          });
+        } else {
+          updateContextStatus("activity", { state: "syncing", detail: "Lecture de Santé..." });
+          try {
+            const activity = await activityService.fetchForDate(today);
+            if (activity) {
+              await contextualEntryService.saveActivity(userId, today, activity);
+              updateContextStatus("activity", {
+                state: "synced",
+                detail: `${activity.steps.toLocaleString("fr-FR")} pas détectés`,
+              });
+            } else {
+              updateContextStatus("activity", {
+                state: "empty",
+                detail: "Aucune activité trouvée pour aujourd'hui",
+              });
+            }
+          } catch {
+            updateContextStatus("activity", {
+              state: "error",
+              detail: "Lecture de l'activité impossible pour le moment",
+            });
+          }
+        }
+      }
+
+      entry = await contextualEntryService.getForDate(userId, today);
+      setContextualEntry(entry);
+
+      if (entry?.screen_total_min && consents.screen_time) {
+        setScreenTimeInput(String(Math.round((entry.screen_total_min / 60) * 10) / 10));
+      }
+    } catch {
+      if (consents.sleep) {
+        updateContextStatus("sleep", {
+          state: "error",
+          detail: "Synchronisation du sommeil impossible",
+        });
+      }
+      if (consents.activity) {
+        updateContextStatus("activity", {
+          state: "error",
+          detail: "Synchronisation de l'activité impossible",
+        });
+      }
+    } finally {
+      setLoadingContext(false);
+    }
+  }, [
+    consents.activity,
+    consents.screen_time,
+    consents.sleep,
+    hasAnyConsent,
+    today,
+    updateContextStatus,
+    userId,
+  ]);
+
+  useEffect(() => {
+    syncContext();
+  }, [syncContext]);
 
   const { control, handleSubmit } = useForm<CheckInForm>({
     resolver: zodResolver(checkInSchema),
@@ -161,8 +258,27 @@ export function MoodCheckIn({
     }
   };
 
-  const hasContextualData =
-    contextualEntry?.sleep_duration_min != null || contextualEntry?.activity_steps != null;
+  const contextStatusStyle = (state: ContextSyncState) => {
+    if (state === "synced") return "bg-emerald-50 border-emerald-100";
+    if (state === "empty") return "bg-amber-50 border-amber-100";
+    if (state === "error") return "bg-red-50 border-red-100";
+    return "bg-gray-50 border-gray-100";
+  };
+
+  const contextStatusTextStyle = (state: ContextSyncState) => {
+    if (state === "synced") return "text-emerald-700";
+    if (state === "empty") return "text-amber-700";
+    if (state === "error") return "text-red-700";
+    return "text-gray-600";
+  };
+
+  const contextStatusLabel = (state: ContextSyncState) => {
+    if (state === "synced") return "Synchronisé";
+    if (state === "syncing") return "Synchronisation";
+    if (state === "empty") return "Aucune donnée";
+    if (state === "error") return "À vérifier";
+    return "En attente";
+  };
 
   return (
     <View className="bg-white rounded-3xl p-5 gap-6">
@@ -224,39 +340,105 @@ export function MoodCheckIn({
 
       {/* Données contextuelles du jour */}
       {hasAnyConsent && (
-        <View className="gap-2">
-          <Text className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
-            Données du jour
-          </Text>
-          {loadingContext ? (
-            <ActivityIndicator color="#6D28D9" size="small" style={{ alignSelf: "flex-start" }} />
-          ) : (
-            <View className="gap-3">
-              {hasContextualData && (
-                <View className="flex-row flex-wrap gap-2">
-                  {contextualEntry?.sleep_duration_min != null && (
-                    <View className="flex-row items-center gap-1.5 bg-indigo-50 px-3 py-1.5 rounded-full">
-                      <Text>🌙</Text>
-                      <Text className="text-sm font-medium text-indigo-700">
-                        {formatSleepDuration(contextualEntry.sleep_duration_min)} de sommeil
-                      </Text>
-                    </View>
-                  )}
-                  {contextualEntry?.activity_steps != null && (
-                    <View className="flex-row items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full">
-                      <Text>👟</Text>
-                      <Text className="text-sm font-medium text-green-700">
-                        {contextualEntry.activity_steps.toLocaleString("fr-FR")} pas
-                      </Text>
-                    </View>
-                  )}
+        <View className="gap-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+              Données contextuelles
+            </Text>
+            <TouchableOpacity
+              onPress={syncContext}
+              disabled={loadingContext}
+              className={`px-3 py-1.5 rounded-full ${
+                loadingContext ? "bg-gray-100" : "bg-brand-50"
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  loadingContext ? "text-gray-400" : "text-brand-700"
+                }`}
+              >
+                Resynchroniser
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="gap-2">
+            {consents.sleep && (
+              <View
+                className={`border rounded-2xl px-3 py-3 gap-1 ${contextStatusStyle(
+                  contextStatus.sleep.state
+                )}`}
+              >
+                <View className="flex-row items-center justify-between gap-3">
+                  <Text className="text-sm font-semibold text-gray-900">Sommeil</Text>
+                  <Text
+                    className={`text-xs font-semibold ${contextStatusTextStyle(
+                      contextStatus.sleep.state
+                    )}`}
+                  >
+                    {contextStatusLabel(contextStatus.sleep.state)}
+                  </Text>
                 </View>
-              )}
-              {consents.screen_time && (
+                <Text
+                  className={`text-xs leading-5 ${contextStatusTextStyle(
+                    contextStatus.sleep.state
+                  )}`}
+                >
+                  {contextStatus.sleep.detail || "Autorisé, prêt à synchroniser"}
+                </Text>
+                {contextualEntry?.sleep_duration_min != null && (
+                  <Text className="text-xs text-gray-500">
+                    Coucher {contextualEntry.sleep_bedtime ?? "--:--"} · Réveil{" "}
+                    {contextualEntry.sleep_wake_time ?? "--:--"}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {consents.activity && (
+              <View
+                className={`border rounded-2xl px-3 py-3 gap-1 ${contextStatusStyle(
+                  contextStatus.activity.state
+                )}`}
+              >
+                <View className="flex-row items-center justify-between gap-3">
+                  <Text className="text-sm font-semibold text-gray-900">Activité physique</Text>
+                  <Text
+                    className={`text-xs font-semibold ${contextStatusTextStyle(
+                      contextStatus.activity.state
+                    )}`}
+                  >
+                    {contextStatusLabel(contextStatus.activity.state)}
+                  </Text>
+                </View>
+                <Text
+                  className={`text-xs leading-5 ${contextStatusTextStyle(
+                    contextStatus.activity.state
+                  )}`}
+                >
+                  {contextStatus.activity.detail || "Autorisé, prêt à synchroniser"}
+                </Text>
+                {contextualEntry?.activity_training_min != null && (
+                  <Text className="text-xs text-gray-500">
+                    {contextualEntry.activity_training_min} min d'entraînement ·{" "}
+                    {contextualEntry.activity_active_min ?? 0} min actives
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {consents.screen_time && (
+              <View className="border border-sky-100 bg-sky-50 rounded-2xl px-3 py-3 gap-2">
+                <View className="flex-row items-center justify-between gap-3">
+                  <Text className="text-sm font-semibold text-gray-900">Temps d'écran</Text>
+                  <Text className="text-xs font-semibold text-sky-700">
+                    {screenTimeInput.trim() ? "Saisi" : "Manuel"}
+                  </Text>
+                </View>
                 <View className="gap-1.5">
-                  <Text className="text-xs text-gray-500">Temps d'écran (heures)</Text>
+                  <Text className="text-xs text-sky-700">Durée aujourd'hui en heures</Text>
                   <TextInput
-                    className="bg-gray-50 rounded-xl px-3 py-2 text-base text-gray-900 w-28"
+                    className="bg-white rounded-xl px-3 py-2 text-base text-gray-900 w-28"
                     placeholder="ex : 3.5"
                     placeholderTextColor="#9CA3AF"
                     keyboardType="decimal-pad"
@@ -265,9 +447,19 @@ export function MoodCheckIn({
                     maxLength={4}
                   />
                 </View>
-              )}
-            </View>
-          )}
+                <Text className="text-xs text-gray-500">
+                  Cette donnée est enregistrée avec le check-in.
+                </Text>
+              </View>
+            )}
+
+            {loadingContext && (
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator color="#6D28D9" size="small" />
+                <Text className="text-xs text-gray-500">Synchronisation en cours...</Text>
+              </View>
+            )}
+          </View>
         </View>
       )}
 
