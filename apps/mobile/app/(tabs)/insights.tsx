@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 16 },
   loader: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-  pageTitle: { fontSize: 26, fontWeight: "700", color: "#1F2937", paddingHorizontal: 4 },
+  pageTitle: { fontSize: 28, lineHeight: 34, fontWeight: "700", color: "#1F2937", paddingHorizontal: 4 },
 
   emptyState: { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardTitle: { fontSize: 15, fontWeight: "700", color: "#1F2937" },
-  cardSubtitle: { fontSize: 12, color: "#9CA3AF", marginTop: -8 },
+  cardSubtitle: { fontSize: 13, lineHeight: 19, color: "#9CA3AF", marginTop: -8 },
 
   miniBarChart: {
     flexDirection: "row",

@@ -358,8 +358,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 16 },
 
   header: { gap: 4, paddingHorizontal: 4 },
-  pageTitle: { fontSize: 26, fontWeight: "700", color: "#1F2937" },
-  pageSubtitle: { fontSize: 13, color: "#9CA3AF", lineHeight: 19 },
+  pageTitle: { fontSize: 28, lineHeight: 34, fontWeight: "700", color: "#1F2937" },
+  pageSubtitle: { fontSize: 13, color: "#9CA3AF", lineHeight: 20 },
 
   calendarCard: {
     backgroundColor: "#FFFFFF",
