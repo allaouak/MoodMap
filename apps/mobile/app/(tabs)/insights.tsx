@@ -14,7 +14,7 @@ import { moodService } from "@/services/mood.service";
 import { contextualEntryService } from "@/services/contextual-entry.service";
 import { MoodEntry, MoodLevel, MOOD_COLOR, MOOD_LABELS } from "@/types";
 import type { ContextualEntry } from "@/types/contextual";
-import { buildScreenTimeObservation } from "@/utils/contextual";
+import { buildContextualObservations, type ContextualObservation } from "@/utils/contextual";
 import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 import { AppIcon } from "@/components/ui/AppIcon";
 
@@ -145,6 +145,40 @@ function MiniBar({ entry }: { entry: MoodEntry }) {
   );
 }
 
+function ObservationItem({ observation }: { observation: ContextualObservation }) {
+  const icon =
+    observation.module === "sleep"
+      ? "moon-waning-crescent"
+      : observation.module === "activity"
+        ? "shoe-sneaker"
+        : "cellphone";
+  const color =
+    observation.module === "sleep"
+      ? "#6366F1"
+      : observation.module === "activity"
+        ? "#059669"
+        : "#0284C7";
+  const backgroundColor =
+    observation.module === "sleep"
+      ? "#EEF2FF"
+      : observation.module === "activity"
+        ? "#ECFDF5"
+        : "#E0F2FE";
+
+  return (
+    <View style={styles.observationBox}>
+      <AppIcon
+        name={icon}
+        color={color}
+        backgroundColor={backgroundColor}
+        size={16}
+        frameSize={30}
+      />
+      <Text style={styles.observationText}>{observation.text}</Text>
+    </View>
+  );
+}
+
 export default function InsightsScreen() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -153,7 +187,7 @@ export default function InsightsScreen() {
   const [stats30, setStats30] = useState<Stats | null>(null);
   const [contextual7, setContextual7] = useState<ContextualStats | null>(null);
   const [contextual30, setContextual30] = useState<ContextualStats | null>(null);
-  const [screenObservation, setScreenObservation] = useState<string | null>(null);
+  const [contextualObservations, setContextualObservations] = useState<ContextualObservation[]>([]);
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
@@ -177,7 +211,7 @@ export default function InsightsScreen() {
         setStats30(computeStats(e30));
         setContextual7(computeContextualStats(c7));
         setContextual30(computeContextualStats(c30));
-        setScreenObservation(buildScreenTimeObservation(e30, c30));
+        setContextualObservations(buildContextualObservations(e30, c30));
       }
     } catch {
       if (mountedRef.current) setError("Impossible de charger les tendances. Vérifie ta connexion.");
@@ -418,9 +452,14 @@ export default function InsightsScreen() {
                     </View>
                   )}
                 </View>
-                {screenObservation && (
-                  <View style={styles.observationBox}>
-                    <Text style={styles.observationText}>{screenObservation}</Text>
+                {contextualObservations.length > 0 && (
+                  <View style={styles.observationList}>
+                    {contextualObservations.map((observation) => (
+                      <ObservationItem
+                        key={`${observation.module}-${observation.text}`}
+                        observation={observation}
+                      />
+                    ))}
                   </View>
                 )}
                 <Text style={styles.contextHint}>
@@ -543,13 +582,17 @@ const styles = StyleSheet.create({
   },
   contextValue: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
   contextMeta: { fontSize: 10, color: "#9CA3AF", fontWeight: "500" },
+  observationList: { gap: 8 },
   observationBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
     backgroundColor: "#F3F4F6",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  observationText: { fontSize: 13, color: "#374151", lineHeight: 19 },
+  observationText: { flex: 1, fontSize: 13, color: "#374151", lineHeight: 19 },
   contextHint: { fontSize: 12, color: "#6B7280", lineHeight: 18 },
 
   moodSummary: {

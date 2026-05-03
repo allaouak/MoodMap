@@ -1,13 +1,17 @@
-import { buildScreenTimeObservation, formatHoursFromMinutes } from "../utils/contextual";
+import {
+  buildContextualObservations,
+  buildScreenTimeObservation,
+  formatHoursFromMinutes,
+} from "../utils/contextual";
 import type { MoodEntry } from "../types";
 import type { ContextualEntry } from "../types/contextual";
 
-function mood(entry_date: string, stress: number, moodValue = 3): MoodEntry {
+function mood(entry_date: string, stress: number, moodValue = 3, energy = 3): MoodEntry {
   return {
     id: `mood-${entry_date}`,
     user_id: "user-1",
     mood: moodValue as MoodEntry["mood"],
-    energy: 3,
+    energy: energy as MoodEntry["energy"],
     stress: stress as MoodEntry["stress"],
     note: null,
     tags: [],
@@ -17,7 +21,11 @@ function mood(entry_date: string, stress: number, moodValue = 3): MoodEntry {
   };
 }
 
-function context(entry_date: string, screen_total_min: number): ContextualEntry {
+function context(
+  entry_date: string,
+  screen_total_min: number | null,
+  overrides: Partial<ContextualEntry> = {}
+): ContextualEntry {
   return {
     id: `context-${entry_date}`,
     user_id: "user-1",
@@ -36,6 +44,7 @@ function context(entry_date: string, screen_total_min: number): ContextualEntry 
     screen_source: "manual",
     created_at: `${entry_date}T10:00:00.000Z`,
     updated_at: `${entry_date}T10:00:00.000Z`,
+    ...overrides,
   };
 }
 
@@ -73,5 +82,59 @@ describe("buildScreenTimeObservation", () => {
     );
 
     expect(observation).toContain("stress plus haut");
+  });
+});
+
+describe("buildContextualObservations", () => {
+  it("signale une humeur plus haute avec les nuits plus longues", () => {
+    const observations = buildContextualObservations(
+      [
+        mood("2026-05-01", 3, 2),
+        mood("2026-05-02", 3, 2),
+        mood("2026-05-03", 3, 4),
+        mood("2026-05-04", 3, 5),
+      ],
+      [
+        context("2026-05-01", null, { sleep_duration_min: 330 }),
+        context("2026-05-02", null, { sleep_duration_min: 360 }),
+        context("2026-05-03", null, { sleep_duration_min: 480 }),
+        context("2026-05-04", null, { sleep_duration_min: 510 }),
+      ]
+    );
+
+    expect(observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          module: "sleep",
+          text: expect.stringContaining("nuits plus longues"),
+        }),
+      ])
+    );
+  });
+
+  it("signale plus d'énergie avec les jours plus actifs", () => {
+    const observations = buildContextualObservations(
+      [
+        mood("2026-05-01", 3, 3, 2),
+        mood("2026-05-02", 3, 3, 2),
+        mood("2026-05-03", 3, 3, 4),
+        mood("2026-05-04", 3, 3, 5),
+      ],
+      [
+        context("2026-05-01", null, { activity_steps: 1200 }),
+        context("2026-05-02", null, { activity_steps: 2000 }),
+        context("2026-05-03", null, { activity_steps: 8200 }),
+        context("2026-05-04", null, { activity_steps: 9500 }),
+      ]
+    );
+
+    expect(observations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          module: "activity",
+          text: expect.stringContaining("plus d'énergie"),
+        }),
+      ])
+    );
   });
 });
