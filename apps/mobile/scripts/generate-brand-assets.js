@@ -143,28 +143,26 @@ function drawGradientBackground(png) {
 }
 
 function drawMoodMapMark(png, cx, cy, scale, withTile = false) {
+  const centerY = cy - 18 * scale;
   if (withTile) {
-    fillRoundedRect(png, cx - 220 * scale, cy - 220 * scale, 440 * scale, 440 * scale, 118 * scale, rgba(COLORS.white, 234));
-    strokeCircle(png, cx, cy - 14 * scale, 128 * scale, 16 * scale, rgba(COLORS.purple, 210));
+    fillRoundedRect(png, cx - 214 * scale, cy - 214 * scale, 428 * scale, 428 * scale, 122 * scale, rgba(COLORS.white, 235));
   } else {
-    fillCircle(png, cx, cy - 14 * scale, 158 * scale, rgba(COLORS.white, 242));
-    strokeCircle(png, cx, cy - 14 * scale, 116 * scale, 12 * scale, rgba(COLORS.purple, 215));
+    fillCircle(png, cx, centerY, 166 * scale, rgba(COLORS.white, 243));
   }
 
-  fillCircle(png, cx - 46 * scale, cy - 38 * scale, 13 * scale, rgba(COLORS.ink, 210));
-  fillCircle(png, cx + 46 * scale, cy - 38 * scale, 13 * scale, rgba(COLORS.ink, 210));
-  fillCircle(png, cx - 72 * scale, cy + 18 * scale, 16 * scale, rgba(COLORS.purple2, 110));
-  fillCircle(png, cx + 72 * scale, cy + 18 * scale, 16 * scale, rgba(COLORS.purple2, 110));
-  strokeArc(png, cx, cy - 8 * scale, 72 * scale, 0.22 * Math.PI, 0.78 * Math.PI, 13 * scale, rgba(COLORS.ink, 220));
+  strokeCircle(png, cx, centerY, 132 * scale, 18 * scale, rgba(COLORS.purple, 218));
+  strokeCircle(png, cx, centerY, 101 * scale, 8 * scale, rgba(COLORS.lavender2, 255));
 
-  const y = cy + 156 * scale;
-  strokeLine(png, cx - 132 * scale, y, cx - 42 * scale, y - 42 * scale, 16 * scale, rgba(COLORS.blue, 230));
-  strokeLine(png, cx - 42 * scale, y - 42 * scale, cx + 44 * scale, y - 6 * scale, 16 * scale, rgba(COLORS.green, 230));
-  strokeLine(png, cx + 44 * scale, y - 6 * scale, cx + 132 * scale, y - 62 * scale, 16 * scale, rgba(COLORS.white, 230));
-  fillCircle(png, cx - 132 * scale, y, 21 * scale, rgba(COLORS.blue, 255));
-  fillCircle(png, cx - 42 * scale, y - 42 * scale, 21 * scale, rgba(COLORS.green, 255));
-  fillCircle(png, cx + 44 * scale, y - 6 * scale, 21 * scale, rgba(COLORS.white, 255));
-  fillCircle(png, cx + 132 * scale, y - 62 * scale, 21 * scale, rgba(COLORS.lavender2, 255));
+  const mTop = centerY - 52 * scale;
+  const mBase = centerY + 44 * scale;
+  const mMid = centerY - 4 * scale;
+  const stroke = 24 * scale;
+  strokeLine(png, cx - 86 * scale, mBase, cx - 86 * scale, mTop, stroke, rgba(COLORS.purple, 245));
+  strokeLine(png, cx - 86 * scale, mTop, cx - 28 * scale, mMid, stroke, rgba(COLORS.purple, 245));
+  strokeLine(png, cx - 28 * scale, mMid, cx + 28 * scale, mTop, stroke, rgba(COLORS.purple2, 245));
+  strokeLine(png, cx + 28 * scale, mTop, cx + 86 * scale, mBase, stroke, rgba(COLORS.purple2, 245));
+
+  strokeArc(png, cx, centerY + 30 * scale, 72 * scale, 0.22 * Math.PI, 0.78 * Math.PI, 13 * scale, rgba(COLORS.green, 230));
 }
 
 function downsample(src, size) {
