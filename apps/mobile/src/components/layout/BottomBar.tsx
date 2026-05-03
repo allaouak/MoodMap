@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     height: 26,
   },
   iconDim: {
-    opacity: 0.42,
+    opacity: 0.58,
     transform: [{ scale: 0.92 }],
   },
   label: {

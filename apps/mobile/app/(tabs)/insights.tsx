@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
   View,
   Text,
@@ -12,9 +12,10 @@ import { fr } from "date-fns/locale";
 import { useAuthStore } from "@/stores/auth.store";
 import { moodService } from "@/services/mood.service";
 import { contextualEntryService } from "@/services/contextual-entry.service";
-import { MoodEntry, MoodLevel, MOOD_COLOR, MOOD_EMOJI, MOOD_LABELS } from "@/types";
+import { MoodEntry, MoodLevel, MOOD_COLOR, MOOD_LABELS } from "@/types";
 import type { ContextualEntry } from "@/types/contextual";
 import { buildScreenTimeObservation } from "@/utils/contextual";
+import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 
 interface Stats {
   avgMood: number;
@@ -107,17 +108,19 @@ function StatCard({
   label,
   avg,
   color,
-  emoji,
+  icon,
 }: {
   label: string;
   avg: number;
   color: string;
-  emoji: string;
+  icon: ReactNode;
 }) {
   const pct = ((avg - 1) / 4) * 100;
   return (
     <View style={styles.statCard}>
-      <Text style={styles.statEmoji}>{emoji}</Text>
+      <View style={styles.statIcon}>
+        {typeof icon === "string" ? <Text style={styles.statEmoji}>{icon}</Text> : icon}
+      </View>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={[styles.statValue, { color }]}>{avg > 0 ? avg.toFixed(1) : "—"}</Text>
       {avg > 0 && (
@@ -243,10 +246,10 @@ export default function InsightsScreen() {
                     label="Humeur"
                     avg={stats7.avgMood}
                     color={MOOD_COLOR[moodLevelFor(stats7.avgMood)]}
-                    emoji={MOOD_EMOJI[moodLevelFor(stats7.avgMood)]}
+                    icon={<MoodFaceIcon level={moodLevelFor(stats7.avgMood)} size={26} />}
                   />
-                  <StatCard label="Énergie" avg={stats7.avgEnergy} color="#60A5FA" emoji="⚡" />
-                  <StatCard label="Stress" avg={stats7.avgStress} color="#F97316" emoji="🌡️" />
+                  <StatCard label="Énergie" avg={stats7.avgEnergy} color="#60A5FA" icon="⚡" />
+                  <StatCard label="Stress" avg={stats7.avgStress} color="#F97316" icon="🌡️" />
                 </View>
               </View>
             )}
@@ -263,10 +266,10 @@ export default function InsightsScreen() {
                     label="Humeur"
                     avg={stats30.avgMood}
                     color={MOOD_COLOR[moodLevelFor(stats30.avgMood)]}
-                    emoji={MOOD_EMOJI[moodLevelFor(stats30.avgMood)]}
+                    icon={<MoodFaceIcon level={moodLevelFor(stats30.avgMood)} size={26} />}
                   />
-                  <StatCard label="Énergie" avg={stats30.avgEnergy} color="#60A5FA" emoji="⚡" />
-                  <StatCard label="Stress" avg={stats30.avgStress} color="#F97316" emoji="🌡️" />
+                  <StatCard label="Énergie" avg={stats30.avgEnergy} color="#60A5FA" icon="⚡" />
+                  <StatCard label="Stress" avg={stats30.avgStress} color="#F97316" icon="🌡️" />
                 </View>
               </View>
             )}
@@ -358,9 +361,7 @@ export default function InsightsScreen() {
             {/* Message d'humeur globale */}
             {stats30 && stats30.entries.length > 0 && (
               <View style={[styles.moodSummary, { borderColor: MOOD_COLOR[moodLevelFor(stats30.avgMood)] + "40" }]}>
-                <Text style={styles.moodSummaryEmoji}>
-                  {MOOD_EMOJI[moodLevelFor(stats30.avgMood)]}
-                </Text>
+                <MoodFaceIcon level={moodLevelFor(stats30.avgMood)} size={40} />
                 <Text style={styles.moodSummaryText}>
                   En moyenne, tu te sens{" "}
                   <Text style={{ fontWeight: "700", color: MOOD_COLOR[moodLevelFor(stats30.avgMood)] }}>
@@ -425,6 +426,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
+  statIcon: { minHeight: 26, alignItems: "center", justifyContent: "center" },
   statEmoji: { fontSize: 20 },
   statLabel: { fontSize: 10, color: "#9CA3AF", fontWeight: "600", textTransform: "uppercase" },
   statValue: { fontSize: 22, fontWeight: "800" },
@@ -490,7 +492,6 @@ const styles = StyleSheet.create({
     gap: 14,
     borderWidth: 1.5,
   },
-  moodSummaryEmoji: { fontSize: 32 },
   moodSummaryText: { flex: 1, fontSize: 14, color: "#374151", lineHeight: 20 },
   errorText: { fontSize: 14, color: "#EF4444", textAlign: "center", paddingHorizontal: 16 },
 });

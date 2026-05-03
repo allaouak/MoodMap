@@ -25,8 +25,9 @@ import { fr } from "date-fns/locale";
 import { useAuthStore } from "@/stores/auth.store";
 import { moodService } from "@/services/mood.service";
 import { contextualEntryService } from "@/services/contextual-entry.service";
-import { MoodEntry, MOOD_COLOR, MOOD_EMOJI, MOOD_LABELS } from "@/types";
+import { MoodEntry, MOOD_COLOR, MOOD_LABELS } from "@/types";
 import type { ContextualEntry } from "@/types/contextual";
+import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 import { formatTime } from "@/utils/date";
 import {
   contextualEntryForDate,
@@ -229,7 +230,16 @@ export default function CalendarScreen() {
             {selectedEntry ? (
               <View style={styles.detailContent}>
                 <View style={styles.detailMoodRow}>
-                  <Text style={styles.detailEmoji} accessibilityElementsHidden importantForAccessibility="no">{MOOD_EMOJI[selectedEntry.mood]}</Text>
+                  <View
+                    style={[
+                      styles.detailMoodIcon,
+                      { backgroundColor: MOOD_COLOR[selectedEntry.mood] + "20" },
+                    ]}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  >
+                    <MoodFaceIcon level={selectedEntry.mood} size={34} />
+                  </View>
                   <View style={styles.detailMoodInfo}>
                     <Text style={styles.detailMoodLabel}>
                       {MOOD_LABELS[selectedEntry.mood]}
@@ -378,7 +388,13 @@ const styles = StyleSheet.create({
   },
   detailContent: { gap: 12 },
   detailMoodRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  detailEmoji: { fontSize: 36 },
+  detailMoodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   detailMoodInfo: { gap: 2 },
   detailMoodLabel: { fontSize: 16, fontWeight: "700", color: "#1F2937" },
   detailTime: { fontSize: 12, color: "#9CA3AF" },
