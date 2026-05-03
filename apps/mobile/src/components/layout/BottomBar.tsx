@@ -1,12 +1,45 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  type ImageSourcePropType,
+} from "react-native";
 import { usePathname, router } from "expo-router";
+import todayIcon from "../../../assets/images/tabs/today.png";
+import calendarIcon from "../../../assets/images/tabs/calendar.png";
+import insightsIcon from "../../../assets/images/tabs/insights.png";
+import settingsIcon from "../../../assets/images/tabs/settings.png";
 
-const TABS = [
-  { path: "/", label: "Aujourd'hui", emoji: "🏠" },
-  { path: "/calendar", label: "Calendrier", emoji: "📅" },
-  { path: "/insights", label: "Tendances", emoji: "📊" },
-  { path: "/settings", label: "Réglages", emoji: "⚙️" },
-] as const;
+interface BottomTab {
+  path: "/" | "/calendar" | "/insights" | "/settings";
+  label: string;
+  icon: ImageSourcePropType;
+}
+
+const TABS: readonly BottomTab[] = [
+  {
+    path: "/",
+    label: "Aujourd'hui",
+    icon: todayIcon,
+  },
+  {
+    path: "/calendar",
+    label: "Calendrier",
+    icon: calendarIcon,
+  },
+  {
+    path: "/insights",
+    label: "Tendances",
+    icon: insightsIcon,
+  },
+  {
+    path: "/settings",
+    label: "Réglages",
+    icon: settingsIcon,
+  },
+];
 
 export function BottomBar() {
   const pathname = usePathname();
@@ -22,9 +55,13 @@ export function BottomBar() {
             activeOpacity={0.7}
             onPress={() => router.replace(tab.path)}
           >
-            <Text style={[styles.emoji, !focused && styles.dim]}>
-              {tab.emoji}
-            </Text>
+            <View style={[styles.iconFrame, focused && styles.iconFrameFocused]}>
+              <Image
+                source={tab.icon}
+                style={[styles.icon, !focused && styles.iconDim]}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={[styles.label, { color: focused ? "#6D28D9" : "#9CA3AF" }]}>
               {tab.label}
             </Text>
@@ -51,11 +88,23 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     gap: 2,
   },
-  emoji: {
-    fontSize: 20,
+  iconFrame: {
+    width: 36,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
   },
-  dim: {
-    opacity: 0.35,
+  iconFrameFocused: {
+    backgroundColor: "#F3E8FF",
+  },
+  icon: {
+    width: 26,
+    height: 26,
+  },
+  iconDim: {
+    opacity: 0.42,
+    transform: [{ scale: 0.92 }],
   },
   label: {
     fontSize: 11,
