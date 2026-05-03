@@ -106,7 +106,10 @@ export default function TodayScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.dateText}>{dateLabel}</Text>
-          <Text style={styles.greeting}>Bonjour, {firstName} 🌿</Text>
+          <View style={styles.greetingRow}>
+            <Text style={styles.greeting}>Bonjour, {firstName}</Text>
+            <AppIcon name="sprout-outline" size={19} frameSize={34} />
+          </View>
         </View>
 
         {/* Contenu principal */}
@@ -193,6 +196,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, gap: 24 },
   header: { gap: 4 },
   dateText: { fontSize: 13, color: "#9CA3AF", textTransform: "capitalize" },
+  greetingRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   greeting: { fontSize: 26, fontWeight: "700", color: "#1F2937" },
   section: { gap: 12 },
   sectionTitle: {
