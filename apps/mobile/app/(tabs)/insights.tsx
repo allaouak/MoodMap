@@ -139,8 +139,13 @@ function MiniBar({ entry }: { entry: MoodEntry }) {
   const date = parseISO(entry.entry_date);
   return (
     <View style={styles.miniBarCol}>
-      <View style={[styles.miniBarFill, { height, backgroundColor: color }]} />
-      <Text style={styles.miniBarLabel}>{format(date, "dd", { locale: fr })}</Text>
+      <View style={styles.miniBarTrack}>
+        <View style={[styles.miniBarFill, { height, backgroundColor: color }]}>
+          <Text style={styles.miniBarValue}>{entry.mood}</Text>
+        </View>
+      </View>
+      <Text style={styles.miniBarDate}>{format(date, "dd", { locale: fr })}</Text>
+      <Text style={styles.miniBarMood}>{MOOD_LABELS[entry.mood]}</Text>
     </View>
   );
 }
@@ -271,6 +276,7 @@ export default function InsightsScreen() {
             {stats7 && stats7.entries.length > 0 && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>7 derniers jours</Text>
+                <Text style={styles.cardSubtitle}>Humeur quotidienne, de 1 à 5</Text>
                 <View style={styles.miniBarChart}>
                   {[...stats7.entries].reverse().map((e) => (
                     <MiniBar key={e.id} entry={e} />
@@ -518,13 +524,26 @@ const styles = StyleSheet.create({
   miniBarChart: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 4,
-    height: 52,
-    paddingBottom: 2,
+    gap: 8,
+    minHeight: 82,
+    paddingTop: 4,
   },
   miniBarCol: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 3 },
-  miniBarFill: { width: "100%", borderRadius: 4, minHeight: 4 },
-  miniBarLabel: { fontSize: 9, color: "#9CA3AF" },
+  miniBarTrack: {
+    width: "100%",
+    height: 48,
+    justifyContent: "flex-end",
+  },
+  miniBarFill: {
+    width: "100%",
+    borderRadius: 7,
+    minHeight: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniBarValue: { fontSize: 12, color: "#FFFFFF", fontWeight: "800" },
+  miniBarDate: { fontSize: 10, color: "#9CA3AF", fontWeight: "600" },
+  miniBarMood: { fontSize: 9, color: "#6B7280", fontWeight: "600" },
 
   statRow: { flexDirection: "row", gap: 8 },
   statCard: {
