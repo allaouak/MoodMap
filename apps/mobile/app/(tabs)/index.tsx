@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -114,13 +115,14 @@ export default function TodayScreen() {
   const consents = useContextualStore((state) => state.consents);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [todayContextualEntry, setTodayContextualEntry] = useState<ContextualEntry | null>(null);
 
   const timezone = profile?.timezone ?? "UTC";
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (showGlobalLoader = true) => {
     if (!user) return;
-    setLoading(true);
+    if (showGlobalLoader) setLoading(true);
     try {
       const today = todayISOInTimezone(timezone);
       const [entry, contextualEntry] = await Promise.all([
@@ -130,12 +132,21 @@ export default function TodayScreen() {
       setTodayEntry(entry);
       setTodayContextualEntry(contextualEntry);
     } finally {
-      setLoading(false);
+      if (showGlobalLoader) setLoading(false);
     }
   }, [user, timezone, setTodayEntry, setLoading]);
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load(false);
+    } finally {
+      setRefreshing(false);
+    }
   }, [load]);
 
   const handleSaved = async (entry: MoodEntry) => {
@@ -172,6 +183,7 @@ export default function TodayScreen() {
     ? buildDailyContextSignal(todayEntry, todayContextualEntry)
     : null;
   const hasEnabledContext = Object.values(consents).some(Boolean);
+  const showInitialLoader = isLoading && !todayEntry;
 
   if (profileError) {
     return (
@@ -211,6 +223,14 @@ export default function TodayScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#6D28D9"
+            colors={["#6D28D9"]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -222,7 +242,7 @@ export default function TodayScreen() {
         </View>
 
         {/* Contenu principal */}
-        {isLoading ? (
+        {showInitialLoader ? (
           <View style={styles.center}>
             <ActivityIndicator color="#6D28D9" />
           </View>
@@ -275,7 +295,7 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {todayEntry && !isLoading && (
+        {todayEntry && !showInitialLoader && (
           <View style={styles.footer}>
             <Text style={styles.footerHint}>
               Tu peux mettre à jour ton ressenti jusqu'à minuit.
