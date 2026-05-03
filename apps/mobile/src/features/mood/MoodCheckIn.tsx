@@ -51,6 +51,20 @@ function isHHMM(value: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
+function minutesFromHHMM(value: string): number {
+  const parts = value.split(":").map(Number);
+  const hours = parts[0] ?? 0;
+  const minutes = parts[1] ?? 0;
+  return hours * 60 + minutes;
+}
+
+function sleepDurationFromTimes(bedtime: string, wakeTime: string): number {
+  const bedtimeMin = minutesFromHHMM(bedtime);
+  const wakeMin = minutesFromHHMM(wakeTime);
+  const duration = wakeMin - bedtimeMin;
+  return duration > 0 ? duration : duration + 24 * 60;
+}
+
 const SUGGESTED_TAGS = [
   "travail", "famille", "sport", "repos", "social",
   "créativité", "nature", "lecture", "musique", "anxiété",
@@ -280,19 +294,25 @@ export function MoodCheckIn({
   };
 
   const saveManualSleep = async () => {
-    const durationHours = parseFloat(sleepDurationInput.trim().replace(",", "."));
-    if (isNaN(durationHours) || durationHours <= 0 || durationHours > 24) {
-      Alert.alert("Sommeil invalide", "Saisis une durée entre 0 et 24 heures.");
-      return;
-    }
     if (!isHHMM(sleepBedtimeInput) || !isHHMM(sleepWakeInput)) {
       Alert.alert("Horaires invalides", "Utilise le format HH:mm, par exemple 23:30.");
       return;
     }
 
+    const trimmedDuration = sleepDurationInput.trim();
+    const durationHours = trimmedDuration
+      ? parseFloat(trimmedDuration.replace(",", "."))
+      : null;
+    if (durationHours != null && (isNaN(durationHours) || durationHours <= 0 || durationHours > 24)) {
+      Alert.alert("Sommeil invalide", "Saisis une durée entre 0 et 24 heures.");
+      return;
+    }
+
     try {
       setSavingManualSleep(true);
-      const durationMin = Math.round(durationHours * 60);
+      const durationMin = durationHours != null
+        ? Math.round(durationHours * 60)
+        : sleepDurationFromTimes(sleepBedtimeInput, sleepWakeInput);
       await contextualEntryService.saveSleep(userId, today, {
         duration_min: durationMin,
         bedtime: sleepBedtimeInput,
@@ -302,6 +322,7 @@ export function MoodCheckIn({
       });
       const entry = await contextualEntryService.getForDate(userId, today);
       setContextualEntry(entry);
+      setSleepDurationInput(String(Math.round((durationMin / 60) * 10) / 10));
       updateContextStatus("sleep", {
         state: "synced",
         detail: `${formatSleepDuration(durationMin)} saisi manuellement`,
@@ -442,10 +463,15 @@ export function MoodCheckIn({
                   {contextStatus.sleep.detail || "Autorisé, prêt à synchroniser"}
                 </Text>
                 {contextualEntry?.sleep_duration_min != null && (
-                  <Text className="text-xs text-gray-500">
-                    Coucher {contextualEntry.sleep_bedtime ?? "--:--"} · Réveil{" "}
-                    {contextualEntry.sleep_wake_time ?? "--:--"}
-                  </Text>
+                  <View className="gap-1">
+                    <Text className="text-xs text-gray-600">
+                      Durée {formatSleepDuration(contextualEntry.sleep_duration_min)}
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      Coucher {contextualEntry.sleep_bedtime ?? "--:--"} · Réveil{" "}
+                      {contextualEntry.sleep_wake_time ?? "--:--"}
+                    </Text>
+                  </View>
                 )}
                 {(contextStatus.sleep.state === "empty" ||
                   contextStatus.sleep.state === "error" ||
@@ -456,10 +482,10 @@ export function MoodCheckIn({
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
                       <View className="gap-1">
-                        <Text className="text-xs text-gray-500">Durée</Text>
+                        <Text className="text-xs text-gray-500">Durée optionnelle</Text>
                         <TextInput
                           className="bg-white rounded-xl px-3 py-2 text-base text-gray-900 w-24"
-                          placeholder="7.5"
+                          placeholder="auto"
                           placeholderTextColor="#9CA3AF"
                           keyboardType="decimal-pad"
                           value={sleepDurationInput}
