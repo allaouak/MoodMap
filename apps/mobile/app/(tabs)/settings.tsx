@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import { sleepService } from "@/services/sleep.service";
 import { activityService } from "@/services/activity.service";
 import { dataExportService } from "@/services/data-export.service";
 import type { ContextualModule } from "@/types/contextual";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { isExpoGo } from "@/utils/runtime";
 
 const TIME_OPTIONS = [
@@ -56,7 +57,44 @@ const MODULE_EXPLAIN: Record<ContextualModule, string> = {
   screen_time: "Tu pourras saisir ton temps d'écran manuellement lors de chaque check-in. Aucun accès aux apps ou à l'historique n'est demandé.",
 };
 
+const MODULE_ICON: Record<ContextualModule, ComponentProps<typeof AppIcon>["name"]> = {
+  sleep: "moon-waning-crescent",
+  activity: "shoe-sneaker",
+  screen_time: "cellphone",
+};
+
+const MODULE_COLOR: Record<ContextualModule, { color: string; backgroundColor: string }> = {
+  sleep: { color: "#6366F1", backgroundColor: "#EEF2FF" },
+  activity: { color: "#059669", backgroundColor: "#ECFDF5" },
+  screen_time: { color: "#0284C7", backgroundColor: "#E0F2FE" },
+};
+
 const NATIVE_HEALTH_MODULES: ContextualModule[] = ["sleep", "activity"];
+
+function SectionHeader({
+  icon,
+  title,
+  color = "#6D28D9",
+  backgroundColor = "#F3E8FF",
+}: {
+  icon: ComponentProps<typeof AppIcon>["name"];
+  title: string;
+  color?: string;
+  backgroundColor?: string;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <AppIcon
+        name={icon}
+        color={color}
+        backgroundColor={backgroundColor}
+        size={16}
+        frameSize={30}
+      />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const { profile, session, user, setProfile } = useAuth();
@@ -378,7 +416,7 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Rappel quotidien</Text>
+          <SectionHeader icon="bell-outline" title="Rappel quotidien" />
           {!prefs ? (
             <ActivityIndicator color="#6D28D9" style={{ paddingVertical: 12 }} />
           ) : (
@@ -439,7 +477,7 @@ export default function SettingsScreen() {
 
         {/* Verrouillage biométrique */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Sécurité</Text>
+          <SectionHeader icon="shield-lock-outline" title="Sécurité" />
           {biometricSupported ? (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -464,27 +502,36 @@ export default function SettingsScreen() {
 
         {/* Données contextuelles */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Données contextuelles</Text>
+          <SectionHeader icon="database-outline" title="Données contextuelles" />
           <Text style={styles.contextualIntro}>
             Enrichis ton journal avec des données de ton quotidien. Chaque module est indépendant et révocable.
           </Text>
           {(["sleep", "activity", "screen_time"] as ContextualModule[]).map((module) => (
             <View key={module} style={styles.contextualRow}>
-              <View style={styles.rowLeft}>
-                <View style={styles.moduleTitleRow}>
-                  <Text style={styles.rowLabel}>{MODULE_LABEL[module]}</Text>
+              <View style={styles.moduleInfo}>
+                <AppIcon
+                  name={MODULE_ICON[module]}
+                  color={MODULE_COLOR[module].color}
+                  backgroundColor={MODULE_COLOR[module].backgroundColor}
+                  size={17}
+                  frameSize={34}
+                />
+                <View style={styles.rowLeft}>
+                  <View style={styles.moduleTitleRow}>
+                    <Text style={styles.rowLabel}>{MODULE_LABEL[module]}</Text>
+                    {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
+                      <View style={styles.moduleBadge}>
+                        <Text style={styles.moduleBadgeText}>Dev build</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.rowSub}>{MODULE_DESC[module]}</Text>
                   {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
-                    <View style={styles.moduleBadge}>
-                      <Text style={styles.moduleBadgeText}>Dev build</Text>
-                    </View>
+                    <Text style={styles.moduleUnavailableText}>
+                      Non disponible dans Expo Go.
+                    </Text>
                   )}
                 </View>
-                <Text style={styles.rowSub}>{MODULE_DESC[module]}</Text>
-                {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
-                  <Text style={styles.moduleUnavailableText}>
-                    Non disponible dans Expo Go.
-                  </Text>
-                )}
               </View>
               <Switch
                 value={consents[module]}
@@ -502,7 +549,7 @@ export default function SettingsScreen() {
 
         {/* Confidentialité */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Confidentialité</Text>
+          <SectionHeader icon="lock-check-outline" title="Confidentialité" />
           <Text style={styles.privacyText}>
             Tes données sont transmises via HTTPS et stockées dans une base
             sécurisée avec accès strictement limité à ton compte. MoodMap
@@ -519,8 +566,17 @@ export default function SettingsScreen() {
               <ActivityIndicator color="#6D28D9" size="small" />
             ) : (
               <>
-                <Text style={styles.exportBtnLabel}>Exporter mes données</Text>
-                <Text style={styles.exportBtnSub}>Profil, humeurs et données contextuelles au format JSON</Text>
+                <AppIcon
+                  name="download-outline"
+                  color="#6D28D9"
+                  backgroundColor="#EDE5FF"
+                  size={18}
+                  frameSize={34}
+                />
+                <View style={styles.exportTextBlock}>
+                  <Text style={styles.exportBtnLabel}>Exporter mes données</Text>
+                  <Text style={styles.exportBtnSub}>Profil, humeurs et données contextuelles au format JSON</Text>
+                </View>
               </>
             )}
           </TouchableOpacity>
@@ -680,6 +736,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 24, fontWeight: "700", color: "#6D28D9" },
   displayName: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
 
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
@@ -699,6 +756,7 @@ const styles = StyleSheet.create({
     gap: 12,
     minHeight: 54,
   },
+  moduleInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   rowLeft: { flex: 1, gap: 2 },
   moduleTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   rowLabel: { fontSize: 15, fontWeight: "500", color: "#1F2937" },
@@ -737,13 +795,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     borderRadius: 14,
     padding: 14,
-    gap: 3,
+    gap: 10,
     alignItems: "center",
+    flexDirection: "row",
     minHeight: 62,
     justifyContent: "center",
   },
+  exportTextBlock: { flex: 1, gap: 2 },
   exportBtnLabel: { fontSize: 14, color: "#6D28D9", fontWeight: "700" },
-  exportBtnSub: { fontSize: 11, color: "#6B7280", textAlign: "center", lineHeight: 16 },
+  exportBtnSub: { fontSize: 11, color: "#6B7280", lineHeight: 16 },
   actionDisabled: { opacity: 0.6 },
 
   signOutBtn: {

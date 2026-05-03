@@ -114,112 +114,119 @@ export default function CalendarScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.header}>
+          <Text style={styles.pageTitle}>Calendrier</Text>
+          <Text style={styles.pageSubtitle}>Retrouve tes ressentis et tes rythmes jour par jour.</Text>
+        </View>
+
         {/* Header mois */}
-        <View style={styles.monthHeader}>
-          <TouchableOpacity
-            onPress={goToPrev}
-            style={styles.navBtn}
-            activeOpacity={0.7}
-            accessibilityLabel="Mois précédent"
-            accessibilityRole="button"
-          >
-            <Text style={styles.navArrow} accessibilityElementsHidden>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.monthTitle}>
-            {format(currentMonth, "MMMM yyyy", { locale: fr })}
-          </Text>
-          <TouchableOpacity
-            onPress={goToNext}
-            style={[styles.navBtn, !canGoNext && styles.navBtnDisabled]}
-            activeOpacity={0.7}
-            disabled={!canGoNext}
-            accessibilityLabel="Mois suivant"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canGoNext }}
-          >
-            <Text style={[styles.navArrow, !canGoNext && styles.navArrowDisabled]} accessibilityElementsHidden>›</Text>
-          </TouchableOpacity>
-        </View>
+        <View style={styles.calendarCard}>
+          <View style={styles.monthHeader}>
+            <TouchableOpacity
+              onPress={goToPrev}
+              style={styles.navBtn}
+              activeOpacity={0.7}
+              accessibilityLabel="Mois précédent"
+              accessibilityRole="button"
+            >
+              <Text style={styles.navArrow} accessibilityElementsHidden>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.monthTitle}>
+              {format(currentMonth, "MMMM yyyy", { locale: fr })}
+            </Text>
+            <TouchableOpacity
+              onPress={goToNext}
+              style={[styles.navBtn, !canGoNext && styles.navBtnDisabled]}
+              activeOpacity={0.7}
+              disabled={!canGoNext}
+              accessibilityLabel="Mois suivant"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canGoNext }}
+            >
+              <Text style={[styles.navArrow, !canGoNext && styles.navArrowDisabled]} accessibilityElementsHidden>›</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Labels jours de la semaine */}
-        <View style={styles.dayLabels}>
-          {DAY_LABELS.map((d, i) => (
-            <View key={i} style={styles.dayLabelCell}>
-              <Text style={styles.dayLabelText}>{d}</Text>
+          {/* Labels jours de la semaine */}
+          <View style={styles.dayLabels}>
+            {DAY_LABELS.map((d, i) => (
+              <View key={i} style={styles.dayLabelCell}>
+                <Text style={styles.dayLabelText}>{d}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Grille */}
+          {loading ? (
+            <View style={styles.loader}>
+              <ActivityIndicator color="#6D28D9" />
             </View>
-          ))}
-        </View>
+          ) : error ? (
+            <View style={styles.loader}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {days.map((day) => {
+                const entry = entryForDay(entries, day);
+                const inMonth = isSameMonth(day, currentMonth);
+                const today = isToday(day);
+                const isSelected = selected ? isSameDay(day, selected) : false;
+                const color = entry ? MOOD_COLOR[entry.mood] : null;
 
-        {/* Grille */}
-        {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator color="#6D28D9" />
-          </View>
-        ) : error ? (
-          <View style={styles.loader}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : (
-          <View style={styles.grid}>
-            {days.map((day) => {
-              const entry = entryForDay(entries, day);
-              const inMonth = isSameMonth(day, currentMonth);
-              const today = isToday(day);
-              const isSelected = selected ? isSameDay(day, selected) : false;
-              const color = entry ? MOOD_COLOR[entry.mood] : null;
+                const a11yLabel = inMonth
+                  ? `${format(day, "d MMMM", { locale: fr })}${entry ? `, humeur : ${MOOD_LABELS[entry.mood]}` : ", aucune entrée"}`
+                  : undefined;
 
-              const a11yLabel = inMonth
-                ? `${format(day, "d MMMM", { locale: fr })}${entry ? `, humeur : ${MOOD_LABELS[entry.mood]}` : ", aucune entrée"}`
-                : undefined;
-
-              return (
-                <TouchableOpacity
-                  key={day.toISOString()}
-                  style={[
-                    styles.dayCell,
-                    isSelected && styles.dayCellSelected,
-                    today && !isSelected && styles.dayCellToday,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => setSelected(isSameDay(day, selected ?? new Date(0)) ? null : day)}
-                  disabled={!inMonth}
-                  accessibilityLabel={a11yLabel}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <Text
+                return (
+                  <TouchableOpacity
+                    key={day.toISOString()}
                     style={[
-                      styles.dayNumber,
-                      !inMonth && styles.dayNumberMuted,
-                      today && styles.dayNumberToday,
-                      isSelected && styles.dayNumberSelected,
+                      styles.dayCell,
+                      isSelected && styles.dayCellSelected,
+                      today && !isSelected && styles.dayCellToday,
                     ]}
-                    accessibilityElementsHidden
+                    activeOpacity={0.7}
+                    onPress={() => setSelected(isSameDay(day, selected ?? new Date(0)) ? null : day)}
+                    disabled={!inMonth}
+                    accessibilityLabel={a11yLabel}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    {format(day, "d")}
-                  </Text>
-                  {color && inMonth ? (
-                    <View
-                      style={[styles.moodDot, { backgroundColor: color }]}
+                    <Text
+                      style={[
+                        styles.dayNumber,
+                        !inMonth && styles.dayNumberMuted,
+                        today && styles.dayNumberToday,
+                        isSelected && styles.dayNumberSelected,
+                      ]}
                       accessibilityElementsHidden
-                    />
-                  ) : (
-                    <View style={styles.moodDotEmpty} accessibilityElementsHidden />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Légende */}
-        <View style={styles.legend}>
-          {([1, 2, 3, 4, 5] as const).map((level) => (
-            <View key={level} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: MOOD_COLOR[level] }]} />
-              <Text style={styles.legendLabel}>{MOOD_LABELS[level]}</Text>
+                    >
+                      {format(day, "d")}
+                    </Text>
+                    {color && inMonth ? (
+                      <View
+                        style={[styles.moodDot, { backgroundColor: color }]}
+                        accessibilityElementsHidden
+                      />
+                    ) : (
+                      <View style={styles.moodDotEmpty} accessibilityElementsHidden />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          ))}
+          )}
+
+          {/* Légende */}
+          <View style={styles.legend}>
+            {([1, 2, 3, 4, 5] as const).map((level) => (
+              <View key={level} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: MOOD_COLOR[level] }]} />
+                <Text style={styles.legendLabel}>{MOOD_LABELS[level]}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Détail du jour sélectionné */}
@@ -327,7 +334,16 @@ export default function CalendarScreen() {
                 )}
               </View>
             ) : (
-              <Text style={styles.detailEmpty}>Pas d'entrée pour ce jour.</Text>
+              <View style={styles.detailEmptyState}>
+                <AppIcon
+                  name="calendar-blank-outline"
+                  color="#9CA3AF"
+                  backgroundColor="#F3F4F6"
+                  size={20}
+                  frameSize={42}
+                />
+                <Text style={styles.detailEmpty}>Pas d'entrée pour ce jour.</Text>
+              </View>
             )}
           </View>
         )}
@@ -341,6 +357,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 16 },
 
+  header: { gap: 4, paddingHorizontal: 4 },
+  pageTitle: { fontSize: 26, fontWeight: "700", color: "#1F2937" },
+  pageSubtitle: { fontSize: 13, color: "#9CA3AF", lineHeight: 19 },
+
+  calendarCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 14,
+    gap: 10,
+  },
   monthHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -460,6 +486,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   contextText: { fontSize: 12, color: "#374151", fontWeight: "600" },
-  detailEmpty: { fontSize: 14, color: "#9CA3AF", textAlign: "center", paddingVertical: 8 },
+  detailEmptyState: { alignItems: "center", gap: 8, paddingVertical: 10 },
+  detailEmpty: { fontSize: 14, color: "#9CA3AF", textAlign: "center" },
   errorText: { fontSize: 14, color: "#EF4444", textAlign: "center", paddingHorizontal: 16 },
 });
