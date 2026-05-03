@@ -7,8 +7,19 @@ export function useAuthListener() {
   const { setSession, setProfile, setProfileError, setLoading, setRecovery } = useAuthStore();
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadProfile = async (userId: string) => {
+      try {
+        const profile = await authService.getProfile(userId);
+        if (!cancelled) setProfile(profile);
+      } catch {
+        if (!cancelled) setProfileError(true);
+      }
+    };
+
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         // Flux de récupération de mot de passe — ne pas rediriger vers les tabs
         if (event === "PASSWORD_RECOVERY") {
           setSession(session);
@@ -18,24 +29,25 @@ export function useAuthListener() {
         }
 
         setSession(session);
+        setLoading(false);
 
         if (session?.user) {
-          try {
-            const profile = await authService.getProfile(session.user.id);
-            setProfile(profile);
-          } catch {
-            setProfileError(true);
-          } finally {
-            setLoading(false);
-          }
+          void loadProfile(session.user.id);
         } else {
           setProfile(null);
-          setLoading(false);
         }
       }
     );
 
-    return () => listener.subscription.unsubscribe();
+    const safetyTimer = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimer);
+      listener.subscription.unsubscribe();
+    };
   }, [setSession, setProfile, setProfileError, setLoading, setRecovery]);
 }
 

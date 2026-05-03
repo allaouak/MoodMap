@@ -29,12 +29,23 @@ export default function RootLayout() {
 
   // Vérification du verrou au démarrage — avant d'afficher le contenu sensible
   useEffect(() => {
-    biometricService.getLockEnabled().then((enabled) => {
-      lockEnabledRef.current = enabled;
-      setLockEnabled(enabled);
-      if (enabled) setIsLocked(true);
-      setLockChecked(true);
-    });
+    let cancelled = false;
+    biometricService
+      .getLockEnabled()
+      .then((enabled) => {
+        if (cancelled) return;
+        lockEnabledRef.current = enabled;
+        setLockEnabled(enabled);
+        if (enabled) setIsLocked(true);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLockChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [setLockEnabled]);
 
   // Maintenir le ref en sync quand l'utilisateur active/désactive le verrou dans Settings
