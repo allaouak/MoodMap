@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import * as Haptics from "expo-haptics";
-import { MoodLevel, MOOD_EMOJI, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodLevel, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 
 interface MoodSliderProps {
   label: string;
@@ -43,7 +44,7 @@ export function MoodSlider({
               style={isSelected ? { backgroundColor: color, borderColor: color } : {}}
             >
               {emoji ? (
-                <Text className="text-2xl">{MOOD_EMOJI[level]}</Text>
+                <MoodFaceIcon level={level} selected={isSelected} />
               ) : (
                 <Text
                   className={`text-lg font-bold ${
