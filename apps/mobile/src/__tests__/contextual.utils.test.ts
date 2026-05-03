@@ -1,5 +1,6 @@
 import {
   buildContextualObservations,
+  buildDailyContextSignal,
   buildScreenTimeObservation,
   formatHoursFromMinutes,
 } from "../utils/contextual";
@@ -136,5 +137,39 @@ describe("buildContextualObservations", () => {
         }),
       ])
     );
+  });
+});
+
+describe("buildDailyContextSignal", () => {
+  it("met en avant un temps d'écran élevé avec stress haut", () => {
+    const signal = buildDailyContextSignal(
+      mood("2026-05-03", 4, 3, 3),
+      context("2026-05-03", 540)
+    );
+
+    expect(signal).toEqual(
+      expect.objectContaining({
+        module: "screen_time",
+        text: expect.stringContaining("stress haut"),
+      })
+    );
+  });
+
+  it("met en avant une bonne nuit avec humeur positive", () => {
+    const signal = buildDailyContextSignal(
+      mood("2026-05-03", 2, 4, 4),
+      context("2026-05-03", null, { sleep_duration_min: 510 })
+    );
+
+    expect(signal).toEqual(
+      expect.objectContaining({
+        module: "sleep",
+        text: expect.stringContaining("Bonne nuit"),
+      })
+    );
+  });
+
+  it("ne renvoie rien sans donnée contextuelle", () => {
+    expect(buildDailyContextSignal(mood("2026-05-03", 2), null)).toBeNull();
   });
 });

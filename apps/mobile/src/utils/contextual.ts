@@ -6,6 +6,11 @@ export type ContextualObservation = {
   text: string;
 };
 
+export type DailyContextSignal = {
+  module: ContextualObservation["module"];
+  text: string;
+};
+
 export function formatHoursFromMinutes(minutes: number): string {
   const hours = minutes / 60;
   return `${hours.toFixed(hours >= 10 ? 0 : 1)} h`;
@@ -17,7 +22,9 @@ export function formatSleepDuration(minutes: number): string {
   return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
-export function hasContextualData(entry: ContextualEntry | null | undefined): boolean {
+export function hasContextualData(
+  entry: ContextualEntry | null | undefined
+): entry is ContextualEntry {
   return Boolean(
     entry?.sleep_duration_min != null ||
     entry?.activity_steps != null ||
@@ -30,6 +37,68 @@ export function contextualEntryForDate(
   date: string
 ): ContextualEntry | undefined {
   return entries.find((entry) => entry.entry_date === date);
+}
+
+export function buildDailyContextSignal(
+  moodEntry: MoodEntry,
+  contextualEntry: ContextualEntry | null | undefined
+): DailyContextSignal | null {
+  if (!hasContextualData(contextualEntry)) {
+    return null;
+  }
+
+  if (contextualEntry.sleep_duration_min != null) {
+    const duration = formatSleepDuration(contextualEntry.sleep_duration_min);
+    if (contextualEntry.sleep_duration_min < 6 * 60 && moodEntry.energy <= 2) {
+      return {
+        module: "sleep",
+        text: `Sommeil court (${duration}) et énergie basse aujourd'hui. À garder en repère.`,
+      };
+    }
+    if (contextualEntry.sleep_duration_min >= 8 * 60 && moodEntry.mood >= 4) {
+      return {
+        module: "sleep",
+        text: `Bonne nuit (${duration}) et humeur positive aujourd'hui. Un rythme à observer.`,
+      };
+    }
+  }
+
+  if (contextualEntry.activity_steps != null) {
+    const steps = contextualEntry.activity_steps.toLocaleString("fr-FR");
+    if (contextualEntry.activity_steps < 1500 && moodEntry.energy <= 2) {
+      return {
+        module: "activity",
+        text: `Activité légère (${steps} pas) et énergie basse. Un petit mouvement peut aider à clarifier la journée.`,
+      };
+    }
+    if (contextualEntry.activity_steps >= 8000 && moodEntry.energy >= 4) {
+      return {
+        module: "activity",
+        text: `${steps} pas et une bonne énergie aujourd'hui. Ça mérite d'être suivi dans le temps.`,
+      };
+    }
+  }
+
+  if (contextualEntry.screen_total_min != null) {
+    const hours = formatHoursFromMinutes(contextualEntry.screen_total_min);
+    if (contextualEntry.screen_total_min >= 8 * 60 && moodEntry.stress >= 4) {
+      return {
+        module: "screen_time",
+        text: `Temps d'écran élevé (${hours}) et stress haut. Ce n'est pas une cause, juste un signal à observer.`,
+      };
+    }
+    if (contextualEntry.screen_total_min >= 6 * 60) {
+      return {
+        module: "screen_time",
+        text: `${hours} d'écran aujourd'hui. Utile à comparer avec ton stress sur plusieurs jours.`,
+      };
+    }
+  }
+
+  return {
+    module: "sleep",
+    text: "Tes données du jour sont enregistrées. Les tendances deviendront plus utiles avec quelques jours de recul.",
+  };
 }
 
 function pairedByMetric(

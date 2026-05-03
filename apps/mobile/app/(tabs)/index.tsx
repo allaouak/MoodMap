@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ComponentProps } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Modal,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/auth.store";
 import { useMoodStore } from "@/stores/mood.store";
@@ -20,10 +21,50 @@ import { AppIcon } from "@/components/ui/AppIcon";
 import { MoodEntry } from "@/types";
 import { ContextualEntry } from "@/types/contextual";
 import { todayISOInTimezone } from "@/utils/date";
+import { buildDailyContextSignal, type DailyContextSignal } from "@/utils/contextual";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+const SIGNAL_STYLE: Record<
+  DailyContextSignal["module"],
+  { icon: ComponentProps<typeof AppIcon>["name"]; color: string; backgroundColor: string }
+> = {
+  sleep: { icon: "moon-waning-crescent", color: "#6366F1", backgroundColor: "#EEF2FF" },
+  activity: { icon: "shoe-sneaker", color: "#059669", backgroundColor: "#ECFDF5" },
+  screen_time: { icon: "cellphone", color: "#0284C7", backgroundColor: "#E0F2FE" },
+};
+
+function DailySignalCard({
+  signal,
+  onPress,
+}: {
+  signal: DailyContextSignal;
+  onPress: () => void;
+}) {
+  const signalStyle = SIGNAL_STYLE[signal.module];
+
+  return (
+    <View style={styles.signalCard}>
+      <View style={styles.signalHeader}>
+        <AppIcon
+          name={signalStyle.icon}
+          color={signalStyle.color}
+          backgroundColor={signalStyle.backgroundColor}
+          size={18}
+          frameSize={36}
+        />
+        <Text style={styles.signalTitle}>Signal du jour</Text>
+      </View>
+      <Text style={styles.signalText}>{signal.text}</Text>
+      <TouchableOpacity style={styles.signalAction} onPress={onPress} activeOpacity={0.75}>
+        <Text style={styles.signalActionText}>Voir les tendances</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function TodayScreen() {
+  const router = useRouter();
   const { user, profile, profileError, setProfile, setProfileError } = useAuthStore();
   const { todayEntry, setTodayEntry, isLoading, setLoading } = useMoodStore();
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -82,6 +123,9 @@ export default function TodayScreen() {
 
   const dateLabel = format(new Date(), "EEEE d MMMM", { locale: fr });
   const firstName = profile?.display_name?.split(" ")[0] ?? "toi";
+  const dailySignal = todayEntry
+    ? buildDailyContextSignal(todayEntry, todayContextualEntry)
+    : null;
 
   if (profileError) {
     return (
@@ -144,6 +188,12 @@ export default function TodayScreen() {
               contextualEntry={todayContextualEntry}
               onEdit={() => setShowCheckIn(true)}
             />
+            {dailySignal && (
+              <DailySignalCard
+                signal={dailySignal}
+                onPress={() => router.push("/(tabs)/insights")}
+              />
+            )}
           </View>
         ) : (
           <View style={styles.emptyState}>
@@ -246,6 +296,23 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
   footer: { alignItems: "center" },
   footerHint: { fontSize: 12, color: "#9CA3AF", textAlign: "center" },
+  signalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+  },
+  signalHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  signalTitle: { fontSize: 14, fontWeight: "700", color: "#1F2937" },
+  signalText: { fontSize: 13, color: "#4B5563", lineHeight: 20 },
+  signalAction: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F3E8FF",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  signalActionText: { fontSize: 12, fontWeight: "700", color: "#6D28D9" },
   modalSafe: { flex: 1, backgroundColor: "#F8F4FF" },
   modalContent: { padding: 20, paddingBottom: 40 },
 
