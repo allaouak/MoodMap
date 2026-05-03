@@ -16,16 +16,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.moodmap.app",
-      "associatedDomains": ["applinks:moodmap.app"],
+      "bundleIdentifier": "com.khettal.moodmap.dev",
       "infoPlist": {
         "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal.",
         "NSHealthShareUsageDescription": "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
         "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé."
       },
       "entitlements": {
-        "com.apple.developer.healthkit": true,
-        "com.apple.developer.healthkit.access": []
+        "com.apple.developer.healthkit": true
       }
     },
     "android": {
@@ -62,7 +60,6 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications",
       "expo-local-authentication",
       [
         "@kingstinct/react-native-healthkit",
@@ -89,6 +86,7 @@
           "project": "moodmap"
         }
       ],
+      "./plugins/withPersonalTeamEntitlements",
       [
         "expo-font",
         {
