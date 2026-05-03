@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from "react-native";
-import { MoodEntry, MOOD_EMOJI, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodEntry, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 import { formatTime } from "@/utils/date";
 
 interface TodayCardProps {
@@ -40,7 +41,7 @@ export function TodayCard({ entry, onEdit }: TodayCardProps) {
             className="w-16 h-16 rounded-full items-center justify-center"
             style={{ backgroundColor: moodColor + "20" }}
           >
-            <Text className="text-4xl">{MOOD_EMOJI[entry.mood]}</Text>
+            <MoodFaceIcon level={entry.mood} size={44} />
           </View>
           <View className="flex-1 gap-0.5">
             <Text className="text-xl font-bold text-gray-900">
