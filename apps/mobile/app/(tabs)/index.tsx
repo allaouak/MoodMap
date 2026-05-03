@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/auth.store";
 import { useMoodStore } from "@/stores/mood.store";
+import { useContextualStore } from "@/stores/contextual.store";
 import { moodService } from "@/services/mood.service";
 import { authService } from "@/services/auth.service";
 import { contextualEntryService } from "@/services/contextual-entry.service";
@@ -63,10 +64,54 @@ function DailySignalCard({
   );
 }
 
+function ContextNudgeCard({
+  hasEnabledContext,
+  onSettingsPress,
+  onEditPress,
+}: {
+  hasEnabledContext: boolean;
+  onSettingsPress: () => void;
+  onEditPress: () => void;
+}) {
+  return (
+    <View style={styles.nudgeCard}>
+      <View style={styles.signalHeader}>
+        <AppIcon
+          name={hasEnabledContext ? "sync" : "database-plus-outline"}
+          color="#6D28D9"
+          backgroundColor="#F3E8FF"
+          size={18}
+          frameSize={36}
+        />
+        <Text style={styles.signalTitle}>
+          {hasEnabledContext ? "Données en attente" : "Enrichir ton journal"}
+        </Text>
+      </View>
+      <Text style={styles.signalText}>
+        {hasEnabledContext
+          ? "Tes modules contextuels sont prêts. Ajoute ou resynchronise les données du jour pour obtenir un signal plus utile."
+          : "Active le sommeil, l'activité ou le temps d'écran pour mieux comprendre ce qui accompagne ton ressenti."}
+      </Text>
+      <View style={styles.nudgeActions}>
+        <TouchableOpacity
+          style={styles.signalAction}
+          onPress={hasEnabledContext ? onEditPress : onSettingsPress}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.signalActionText}>
+            {hasEnabledContext ? "Compléter" : "Configurer"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function TodayScreen() {
   const router = useRouter();
   const { user, profile, profileError, setProfile, setProfileError } = useAuthStore();
   const { todayEntry, setTodayEntry, isLoading, setLoading } = useMoodStore();
+  const consents = useContextualStore((state) => state.consents);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [todayContextualEntry, setTodayContextualEntry] = useState<ContextualEntry | null>(null);
@@ -126,6 +171,7 @@ export default function TodayScreen() {
   const dailySignal = todayEntry
     ? buildDailyContextSignal(todayEntry, todayContextualEntry)
     : null;
+  const hasEnabledContext = Object.values(consents).some(Boolean);
 
   if (profileError) {
     return (
@@ -192,6 +238,13 @@ export default function TodayScreen() {
               <DailySignalCard
                 signal={dailySignal}
                 onPress={() => router.push("/(tabs)/insights")}
+              />
+            )}
+            {!dailySignal && (
+              <ContextNudgeCard
+                hasEnabledContext={hasEnabledContext}
+                onSettingsPress={() => router.push("/(tabs)/settings")}
+                onEditPress={() => setShowCheckIn(true)}
               />
             )}
           </View>
@@ -302,6 +355,14 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
+  nudgeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
   signalHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   signalTitle: { fontSize: 14, fontWeight: "700", color: "#1F2937" },
   signalText: { fontSize: 13, color: "#4B5563", lineHeight: 20 },
@@ -312,6 +373,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  nudgeActions: { flexDirection: "row", alignItems: "center" },
   signalActionText: { fontSize: 12, fontWeight: "700", color: "#6D28D9" },
   modalSafe: { flex: 1, backgroundColor: "#F8F4FF" },
   modalContent: { padding: 20, paddingBottom: 40 },
