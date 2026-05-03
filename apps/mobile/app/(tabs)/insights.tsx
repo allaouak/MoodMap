@@ -16,6 +16,7 @@ import { MoodEntry, MoodLevel, MOOD_COLOR, MOOD_LABELS } from "@/types";
 import type { ContextualEntry } from "@/types/contextual";
 import { buildScreenTimeObservation } from "@/utils/contextual";
 import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 interface Stats {
   avgMood: number;
@@ -224,7 +225,7 @@ export default function InsightsScreen() {
 
         {!hasData ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📊</Text>
+            <AppIcon name="chart-line" size={30} frameSize={60} />
             <Text style={styles.emptyTitle}>Pas encore assez de données</Text>
             <Text style={styles.emptySubtitle}>
               Fais quelques check-ins quotidiens pour voir tes tendances apparaître ici.
@@ -248,8 +249,34 @@ export default function InsightsScreen() {
                     color={MOOD_COLOR[moodLevelFor(stats7.avgMood)]}
                     icon={<MoodFaceIcon level={moodLevelFor(stats7.avgMood)} size={26} />}
                   />
-                  <StatCard label="Énergie" avg={stats7.avgEnergy} color="#60A5FA" icon="⚡" />
-                  <StatCard label="Stress" avg={stats7.avgStress} color="#F97316" icon="🌡️" />
+                  <StatCard
+                    label="Énergie"
+                    avg={stats7.avgEnergy}
+                    color="#60A5FA"
+                    icon={
+                      <AppIcon
+                        name="flash-outline"
+                        color="#60A5FA"
+                        backgroundColor="#EFF6FF"
+                        size={17}
+                        frameSize={30}
+                      />
+                    }
+                  />
+                  <StatCard
+                    label="Stress"
+                    avg={stats7.avgStress}
+                    color="#F97316"
+                    icon={
+                      <AppIcon
+                        name="thermometer"
+                        color="#F97316"
+                        backgroundColor="#FFF7ED"
+                        size={17}
+                        frameSize={30}
+                      />
+                    }
+                  />
                 </View>
               </View>
             )}
@@ -268,8 +295,34 @@ export default function InsightsScreen() {
                     color={MOOD_COLOR[moodLevelFor(stats30.avgMood)]}
                     icon={<MoodFaceIcon level={moodLevelFor(stats30.avgMood)} size={26} />}
                   />
-                  <StatCard label="Énergie" avg={stats30.avgEnergy} color="#60A5FA" icon="⚡" />
-                  <StatCard label="Stress" avg={stats30.avgStress} color="#F97316" icon="🌡️" />
+                  <StatCard
+                    label="Énergie"
+                    avg={stats30.avgEnergy}
+                    color="#60A5FA"
+                    icon={
+                      <AppIcon
+                        name="flash-outline"
+                        color="#60A5FA"
+                        backgroundColor="#EFF6FF"
+                        size={17}
+                        frameSize={30}
+                      />
+                    }
+                  />
+                  <StatCard
+                    label="Stress"
+                    avg={stats30.avgStress}
+                    color="#F97316"
+                    icon={
+                      <AppIcon
+                        name="thermometer"
+                        color="#F97316"
+                        backgroundColor="#FFF7ED"
+                        size={17}
+                        frameSize={30}
+                      />
+                    }
+                  />
                 </View>
               </View>
             )}
@@ -312,7 +365,13 @@ export default function InsightsScreen() {
                 <View style={styles.contextGrid}>
                   {contextual7?.sleepAvgHours != null && (
                     <View style={styles.contextItem}>
-                      <Text style={styles.contextEmoji}>🌙</Text>
+                      <AppIcon
+                        name="moon-waning-crescent"
+                        color="#6366F1"
+                        backgroundColor="#EEF2FF"
+                        size={18}
+                        frameSize={34}
+                      />
                       <Text style={styles.contextLabel}>Sommeil 7j</Text>
                       <Text style={styles.contextValue}>
                         {contextual7.sleepAvgHours.toFixed(1)} h
@@ -324,7 +383,13 @@ export default function InsightsScreen() {
                   )}
                   {contextual30.stepsAvg != null && (
                     <View style={styles.contextItem}>
-                      <Text style={styles.contextEmoji}>👟</Text>
+                      <AppIcon
+                        name="shoe-sneaker"
+                        color="#059669"
+                        backgroundColor="#ECFDF5"
+                        size={18}
+                        frameSize={34}
+                      />
                       <Text style={styles.contextLabel}>Pas 30j</Text>
                       <Text style={styles.contextValue}>
                         {Math.round(contextual30.stepsAvg).toLocaleString("fr-FR")}
@@ -336,7 +401,13 @@ export default function InsightsScreen() {
                   )}
                   {contextual30.screenAvgHours != null && (
                     <View style={styles.contextItem}>
-                      <Text style={styles.contextEmoji}>📱</Text>
+                      <AppIcon
+                        name="cellphone"
+                        color="#0284C7"
+                        backgroundColor="#E0F2FE"
+                        size={18}
+                        frameSize={34}
+                      />
                       <Text style={styles.contextLabel}>Écran 30j</Text>
                       <Text style={styles.contextValue}>
                         {contextual30.screenAvgHours.toFixed(1)} h
@@ -387,7 +458,6 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 26, fontWeight: "700", color: "#1F2937", paddingHorizontal: 4 },
 
   emptyState: { alignItems: "center", paddingVertical: 60, gap: 12 },
-  emptyEmoji: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
   emptySubtitle: {
     fontSize: 14,
@@ -465,7 +535,6 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 4,
   },
-  contextEmoji: { fontSize: 20 },
   contextLabel: {
     fontSize: 10,
     color: "#9CA3AF",

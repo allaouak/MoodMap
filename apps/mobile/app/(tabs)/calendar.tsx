@@ -28,6 +28,7 @@ import { contextualEntryService } from "@/services/contextual-entry.service";
 import { MoodEntry, MOOD_COLOR, MOOD_LABELS } from "@/types";
 import type { ContextualEntry } from "@/types/contextual";
 import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { formatTime } from "@/utils/date";
 import {
   contextualEntryForDate,
@@ -281,7 +282,13 @@ export default function CalendarScreen() {
                     <View style={styles.contextChips}>
                       {selectedContextual?.sleep_duration_min != null && (
                         <View style={styles.contextChip}>
-                          <Text style={styles.contextEmoji}>🌙</Text>
+                          <AppIcon
+                            name="moon-waning-crescent"
+                            color="#6366F1"
+                            backgroundColor="#EEF2FF"
+                            size={13}
+                            frameSize={24}
+                          />
                           <Text style={styles.contextText}>
                             {formatSleepDuration(selectedContextual.sleep_duration_min)} sommeil
                           </Text>
@@ -289,7 +296,13 @@ export default function CalendarScreen() {
                       )}
                       {selectedContextual?.activity_steps != null && (
                         <View style={styles.contextChip}>
-                          <Text style={styles.contextEmoji}>👟</Text>
+                          <AppIcon
+                            name="shoe-sneaker"
+                            color="#059669"
+                            backgroundColor="#ECFDF5"
+                            size={13}
+                            frameSize={24}
+                          />
                           <Text style={styles.contextText}>
                             {selectedContextual.activity_steps.toLocaleString("fr-FR")} pas
                           </Text>
@@ -297,7 +310,13 @@ export default function CalendarScreen() {
                       )}
                       {selectedContextual?.screen_total_min != null && (
                         <View style={styles.contextChip}>
-                          <Text style={styles.contextEmoji}>📱</Text>
+                          <AppIcon
+                            name="cellphone"
+                            color="#0284C7"
+                            backgroundColor="#E0F2FE"
+                            size={13}
+                            frameSize={24}
+                          />
                           <Text style={styles.contextText}>
                             {formatHoursFromMinutes(selectedContextual.screen_total_min)} écran
                           </Text>
@@ -440,7 +459,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  contextEmoji: { fontSize: 13 },
   contextText: { fontSize: 12, color: "#374151", fontWeight: "600" },
   detailEmpty: { fontSize: 14, color: "#9CA3AF", textAlign: "center", paddingVertical: 8 },
   errorText: { fontSize: 14, color: "#EF4444", textAlign: "center", paddingHorizontal: 16 },

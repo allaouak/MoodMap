@@ -15,6 +15,7 @@ import { moodService } from "@/services/mood.service";
 import { authService } from "@/services/auth.service";
 import { TodayCard } from "@/features/mood/TodayCard";
 import { MoodCheckIn } from "@/features/mood/MoodCheckIn";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { MoodEntry } from "@/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -67,7 +68,13 @@ export default function TodayScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.errorState}>
-          <Text style={styles.errorEmoji}>⚠️</Text>
+          <AppIcon
+            name="alert-circle-outline"
+            color="#EF4444"
+            backgroundColor="#FEE2E2"
+            size={30}
+            frameSize={58}
+          />
           <Text style={styles.errorTitle}>Profil indisponible</Text>
           <Text style={styles.errorSubtitle}>
             Impossible de charger ton profil. Vérifie ta connexion.
@@ -117,7 +124,13 @@ export default function TodayScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🌱</Text>
+            <AppIcon
+              name="sprout-outline"
+              color="#6D28D9"
+              backgroundColor="#F3E8FF"
+              size={32}
+              frameSize={64}
+            />
             <Text style={styles.emptyTitle}>
               Pas encore de check-in aujourd'hui
             </Text>
@@ -191,7 +204,6 @@ const styles = StyleSheet.create({
   },
   center: { paddingVertical: 60, alignItems: "center" },
   emptyState: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  emptyEmoji: { fontSize: 56 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
   emptySubtitle: {
     fontSize: 14,
@@ -214,7 +226,6 @@ const styles = StyleSheet.create({
   modalContent: { padding: 20, paddingBottom: 40 },
 
   errorState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 },
-  errorEmoji: { fontSize: 48 },
   errorTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
   errorSubtitle: {
     fontSize: 14,

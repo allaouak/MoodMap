@@ -15,6 +15,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { authService } from "@/services/auth.service";
 import { registerSchema } from "@/lib/validation";
 
@@ -67,9 +68,12 @@ export default function RegisterScreen() {
             <TouchableOpacity onPress={() => router.back()} className="mb-4">
               <Text className="text-brand-500 text-base">← Retour</Text>
             </TouchableOpacity>
-            <Text className="text-3xl font-bold text-gray-900">
-              Crée ton compte 🌱
-            </Text>
+            <View className="flex-row items-center gap-3">
+              <Text className="text-3xl font-bold text-gray-900">
+                Crée ton compte
+              </Text>
+              <AppIcon name="sprout-outline" size={18} frameSize={34} />
+            </View>
             <Text className="text-gray-500">
               Ton journal t'appartient. Tes données restent privées.
             </Text>
