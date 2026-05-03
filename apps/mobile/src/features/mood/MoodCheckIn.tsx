@@ -39,6 +39,18 @@ const INITIAL_CONTEXT_STATUS: Record<NativeContextModule, ContextSyncStatus> = {
   activity: { state: "idle", detail: "" },
 };
 
+function sleepQualityFromMinutes(min: number): 1 | 2 | 3 | 4 | 5 {
+  if (min >= 450) return 5;
+  if (min >= 360) return 4;
+  if (min >= 300) return 3;
+  if (min >= 240) return 2;
+  return 1;
+}
+
+function isHHMM(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 const SUGGESTED_TAGS = [
   "travail", "famille", "sport", "repos", "social",
   "créativité", "nature", "lecture", "musique", "anxiété",
@@ -65,6 +77,10 @@ export function MoodCheckIn({
   const [contextualEntry, setContextualEntry] = useState<ContextualEntry | null>(null);
   const [loadingContext, setLoadingContext] = useState(false);
   const [screenTimeInput, setScreenTimeInput] = useState("");
+  const [sleepDurationInput, setSleepDurationInput] = useState("");
+  const [sleepBedtimeInput, setSleepBedtimeInput] = useState("23:00");
+  const [sleepWakeInput, setSleepWakeInput] = useState("07:00");
+  const [savingManualSleep, setSavingManualSleep] = useState(false);
   const [contextStatus, setContextStatus] =
     useState<Record<NativeContextModule, ContextSyncStatus>>(INITIAL_CONTEXT_STATUS);
 
@@ -156,6 +172,11 @@ export function MoodCheckIn({
 
       if (entry?.screen_total_min && consents.screen_time) {
         setScreenTimeInput(String(Math.round((entry.screen_total_min / 60) * 10) / 10));
+      }
+      if (entry?.sleep_duration_min && consents.sleep) {
+        setSleepDurationInput(String(Math.round((entry.sleep_duration_min / 60) * 10) / 10));
+        if (entry.sleep_bedtime) setSleepBedtimeInput(entry.sleep_bedtime);
+        if (entry.sleep_wake_time) setSleepWakeInput(entry.sleep_wake_time);
       }
     } catch {
       if (consents.sleep) {
@@ -255,6 +276,40 @@ export function MoodCheckIn({
       Alert.alert("Erreur", "Impossible d'enregistrer. Vérifie ta connexion et réessaie.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveManualSleep = async () => {
+    const durationHours = parseFloat(sleepDurationInput.trim().replace(",", "."));
+    if (isNaN(durationHours) || durationHours <= 0 || durationHours > 24) {
+      Alert.alert("Sommeil invalide", "Saisis une durée entre 0 et 24 heures.");
+      return;
+    }
+    if (!isHHMM(sleepBedtimeInput) || !isHHMM(sleepWakeInput)) {
+      Alert.alert("Horaires invalides", "Utilise le format HH:mm, par exemple 23:30.");
+      return;
+    }
+
+    try {
+      setSavingManualSleep(true);
+      const durationMin = Math.round(durationHours * 60);
+      await contextualEntryService.saveSleep(userId, today, {
+        duration_min: durationMin,
+        bedtime: sleepBedtimeInput,
+        wake_time: sleepWakeInput,
+        quality: sleepQualityFromMinutes(durationMin),
+        source: "manual",
+      });
+      const entry = await contextualEntryService.getForDate(userId, today);
+      setContextualEntry(entry);
+      updateContextStatus("sleep", {
+        state: "synced",
+        detail: `${formatSleepDuration(durationMin)} saisi manuellement`,
+      });
+    } catch {
+      Alert.alert("Erreur", "Impossible d'enregistrer le sommeil manuel.");
+    } finally {
+      setSavingManualSleep(false);
     }
   };
 
@@ -391,6 +446,68 @@ export function MoodCheckIn({
                     Coucher {contextualEntry.sleep_bedtime ?? "--:--"} · Réveil{" "}
                     {contextualEntry.sleep_wake_time ?? "--:--"}
                   </Text>
+                )}
+                {(contextStatus.sleep.state === "empty" ||
+                  contextStatus.sleep.state === "error" ||
+                  contextualEntry?.sleep_source === "manual") && (
+                  <View className="gap-2 pt-2">
+                    <Text className="text-xs font-semibold text-gray-600">
+                      Saisie manuelle
+                    </Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      <View className="gap-1">
+                        <Text className="text-xs text-gray-500">Durée</Text>
+                        <TextInput
+                          className="bg-white rounded-xl px-3 py-2 text-base text-gray-900 w-24"
+                          placeholder="7.5"
+                          placeholderTextColor="#9CA3AF"
+                          keyboardType="decimal-pad"
+                          value={sleepDurationInput}
+                          onChangeText={setSleepDurationInput}
+                          maxLength={4}
+                        />
+                      </View>
+                      <View className="gap-1">
+                        <Text className="text-xs text-gray-500">Coucher</Text>
+                        <TextInput
+                          className="bg-white rounded-xl px-3 py-2 text-base text-gray-900 w-24"
+                          placeholder="23:00"
+                          placeholderTextColor="#9CA3AF"
+                          keyboardType="numbers-and-punctuation"
+                          value={sleepBedtimeInput}
+                          onChangeText={setSleepBedtimeInput}
+                          maxLength={5}
+                        />
+                      </View>
+                      <View className="gap-1">
+                        <Text className="text-xs text-gray-500">Réveil</Text>
+                        <TextInput
+                          className="bg-white rounded-xl px-3 py-2 text-base text-gray-900 w-24"
+                          placeholder="07:00"
+                          placeholderTextColor="#9CA3AF"
+                          keyboardType="numbers-and-punctuation"
+                          value={sleepWakeInput}
+                          onChangeText={setSleepWakeInput}
+                          maxLength={5}
+                        />
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={saveManualSleep}
+                      disabled={savingManualSleep}
+                      className={`self-start px-3 py-2 rounded-full ${
+                        savingManualSleep ? "bg-gray-100" : "bg-amber-100"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          savingManualSleep ? "text-gray-400" : "text-amber-800"
+                        }`}
+                      >
+                        {savingManualSleep ? "Enregistrement..." : "Enregistrer le sommeil"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             )}
