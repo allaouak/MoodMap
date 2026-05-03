@@ -13,10 +13,13 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useMoodStore } from "@/stores/mood.store";
 import { moodService } from "@/services/mood.service";
 import { authService } from "@/services/auth.service";
+import { contextualEntryService } from "@/services/contextual-entry.service";
 import { TodayCard } from "@/features/mood/TodayCard";
 import { MoodCheckIn } from "@/features/mood/MoodCheckIn";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { MoodEntry } from "@/types";
+import { ContextualEntry } from "@/types/contextual";
+import { todayISOInTimezone } from "@/utils/date";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -25,6 +28,7 @@ export default function TodayScreen() {
   const { todayEntry, setTodayEntry, isLoading, setLoading } = useMoodStore();
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [todayContextualEntry, setTodayContextualEntry] = useState<ContextualEntry | null>(null);
 
   const timezone = profile?.timezone ?? "UTC";
 
@@ -32,8 +36,13 @@ export default function TodayScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      const entry = await moodService.getTodayEntry(user.id, timezone);
+      const today = todayISOInTimezone(timezone);
+      const [entry, contextualEntry] = await Promise.all([
+        moodService.getTodayEntry(user.id, timezone),
+        contextualEntryService.getForDate(user.id, today),
+      ]);
       setTodayEntry(entry);
+      setTodayContextualEntry(contextualEntry);
     } finally {
       setLoading(false);
     }
@@ -43,9 +52,19 @@ export default function TodayScreen() {
     load();
   }, [load]);
 
-  const handleSaved = (entry: MoodEntry) => {
+  const handleSaved = async (entry: MoodEntry) => {
     setTodayEntry(entry);
-    setShowCheckIn(false);
+    try {
+      if (user) {
+        const contextualEntry = await contextualEntryService.getForDate(
+          user.id,
+          todayISOInTimezone(timezone)
+        );
+        setTodayContextualEntry(contextualEntry);
+      }
+    } finally {
+      setShowCheckIn(false);
+    }
   };
 
   const handleRetryProfile = useCallback(async () => {
@@ -122,6 +141,7 @@ export default function TodayScreen() {
             <Text style={styles.sectionTitle}>Ton ressenti du jour</Text>
             <TodayCard
               entry={todayEntry}
+              contextualEntry={todayContextualEntry}
               onEdit={() => setShowCheckIn(true)}
             />
           </View>
