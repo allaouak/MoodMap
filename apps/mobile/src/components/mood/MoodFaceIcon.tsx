@@ -8,8 +8,8 @@ interface MoodFaceIconProps {
 }
 
 const FACE_PATHS: Record<MoodLevel, string> = {
-  1: "M13 30c4 4 14 4 18 0",
-  2: "M13 29c5 3 13 3 18 0",
+  1: "M13 32c4-5 14-5 18 0",
+  2: "M14 31c4-3 12-3 16 0",
   3: "M14 28h16",
   4: "M13 27c4 5 14 5 18 0",
   5: "M12 26c4 7 16 7 20 0",
@@ -23,7 +23,7 @@ export function MoodFaceIcon({ level, selected = false, size = 34 }: MoodFaceIco
   return (
     <Svg width={size} height={size} viewBox="0 0 44 44" accessibilityLabel={`Humeur ${level}`}>
       <Circle cx="22" cy="22" r="18" fill={fill} stroke={stroke} strokeWidth={2.25} />
-      {level <= 2 ? (
+      {level === 1 ? (
         <>
           <Path
             d="M14 18c2-2 5-2 7 0"
@@ -34,6 +34,23 @@ export function MoodFaceIcon({ level, selected = false, size = 34 }: MoodFaceIco
           />
           <Path
             d="M23 18c2-2 5-2 7 0"
+            stroke={stroke}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      ) : level === 2 ? (
+        <>
+          <Path
+            d="M14 19c2-1 5-1 7 0"
+            stroke={stroke}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            fill="none"
+          />
+          <Path
+            d="M23 19c2-1 5-1 7 0"
             stroke={stroke}
             strokeWidth={2.4}
             strokeLinecap="round"
