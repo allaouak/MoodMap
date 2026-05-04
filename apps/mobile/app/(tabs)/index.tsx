@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, type ComponentProps } from "react";
+import { useState, useCallback, type ComponentProps } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/auth.store";
-import { useMoodStore } from "@/stores/mood.store";
 import { useContextualStore } from "@/stores/contextual.store";
 import { moodService } from "@/services/mood.service";
 import { authService } from "@/services/auth.service";
@@ -21,11 +20,11 @@ import { TodayCard } from "@/features/mood/TodayCard";
 import { MoodCheckIn } from "@/features/mood/MoodCheckIn";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { MoodEntry } from "@/types";
-import { ContextualEntry } from "@/types/contextual";
 import { todayISOInTimezone } from "@/utils/date";
 import { buildDailyContextSignal, type DailyContextSignal } from "@/utils/contextual";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const SIGNAL_STYLE: Record<
   DailyContextSignal["module"],
@@ -111,57 +110,56 @@ function ContextNudgeCard({
 export default function TodayScreen() {
   const router = useRouter();
   const { user, profile, profileError, setProfile, setProfileError } = useAuthStore();
-  const { todayEntry, setTodayEntry, isLoading, setLoading } = useMoodStore();
   const consents = useContextualStore((state) => state.consents);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [todayContextualEntry, setTodayContextualEntry] = useState<ContextualEntry | null>(null);
+
+  const queryClient = useQueryClient();
 
   const timezone = profile?.timezone ?? "UTC";
+  const userId = user?.id;
 
-  const load = useCallback(async (showGlobalLoader = true) => {
-    if (!user) return;
-    if (showGlobalLoader) setLoading(true);
-    try {
+  const { data: todayEntry, isLoading: isLoadingMood, error: moodError, refetch: refetchMood } = useQuery({
+    queryKey: ['todayMoodEntry', userId, timezone],
+    queryFn: async () => {
+      if (!userId) return null;
+      return moodService.getTodayEntry(userId, timezone);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: todayContextualEntry, isLoading: isLoadingContextual, error: contextualError, refetch: refetchContextual } = useQuery({
+    queryKey: ['todayContextualEntry', userId, timezone],
+    queryFn: async () => {
+      if (!userId) return null;
       const today = todayISOInTimezone(timezone);
-      const [entry, contextualEntry] = await Promise.all([
-        moodService.getTodayEntry(user.id, timezone),
-        contextualEntryService.getForDate(user.id, today),
-      ]);
-      setTodayEntry(entry);
-      setTodayContextualEntry(contextualEntry);
-    } finally {
-      if (showGlobalLoader) setLoading(false);
-    }
-  }, [user, timezone, setTodayEntry, setLoading]);
+      return contextualEntryService.getForDate(userId, today);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const isLoading = isLoadingMood || isLoadingContextual;
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load(false);
+      await Promise.all([refetchMood(), refetchContextual()]);
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [refetchMood, refetchContextual]);
 
-  const handleSaved = async (entry: MoodEntry) => {
-    setTodayEntry(entry);
-    try {
-      if (user) {
-        const contextualEntry = await contextualEntryService.getForDate(
-          user.id,
-          todayISOInTimezone(timezone)
-        );
-        setTodayContextualEntry(contextualEntry);
-      }
-    } finally {
-      setShowCheckIn(false);
-    }
+  const handleSaved = async (_entry: MoodEntry) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['todayMoodEntry', userId, timezone] }),
+      queryClient.invalidateQueries({ queryKey: ['todayContextualEntry', userId, timezone] }),
+      queryClient.invalidateQueries({ queryKey: ['moodEntries', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['contextualEntries', userId] }),
+    ]);
+    setShowCheckIn(false);
   };
 
   const handleRetryProfile = useCallback(async () => {
@@ -170,6 +168,7 @@ export default function TodayScreen() {
     try {
       const p = await authService.getProfile(user.id);
       setProfile(p);
+      setProfileError(false);
     } catch {
       setProfileError(true);
     } finally {
@@ -179,13 +178,13 @@ export default function TodayScreen() {
 
   const dateLabel = format(new Date(), "EEEE d MMMM", { locale: fr });
   const firstName = profile?.display_name?.split(" ")[0] ?? "toi";
-  const dailySignal = todayEntry
+  const dailySignal = todayEntry && todayContextualEntry
     ? buildDailyContextSignal(todayEntry, todayContextualEntry)
     : null;
   const hasEnabledContext = Object.values(consents).some(Boolean);
   const showInitialLoader = isLoading && !todayEntry;
 
-  if (profileError) {
+  if (profileError || moodError || contextualError) {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.errorState}>
@@ -196,13 +195,17 @@ export default function TodayScreen() {
             size={30}
             frameSize={58}
           />
-          <Text style={styles.errorTitle}>Profil indisponible</Text>
+          <Text style={styles.errorTitle}>Erreur de chargement</Text>
           <Text style={styles.errorSubtitle}>
-            Impossible de charger ton profil. Vérifie ta connexion.
+            Impossible de charger les données. Vérifie ta connexion.
           </Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={handleRetryProfile}
+            onPress={() => {
+              refetchMood();
+              refetchContextual();
+              handleRetryProfile();
+            }}
             activeOpacity={0.8}
             disabled={retrying}
           >
@@ -251,7 +254,7 @@ export default function TodayScreen() {
             <Text style={styles.sectionTitle}>Ton ressenti du jour</Text>
             <TodayCard
               entry={todayEntry}
-              contextualEntry={todayContextualEntry}
+              contextualEntry={todayContextualEntry ?? null}
               onEdit={() => setShowCheckIn(true)}
             />
             {dailySignal && (
@@ -321,7 +324,7 @@ export default function TodayScreen() {
               <MoodCheckIn
                 userId={user.id}
                 timezone={timezone}
-                existingEntry={todayEntry}
+                existingEntry={todayEntry ?? null}
                 onSaved={handleSaved}
                 onCancel={() => setShowCheckIn(false)}
               />

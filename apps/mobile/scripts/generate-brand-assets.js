@@ -6,14 +6,18 @@ const OUT_DIR = path.join(__dirname, "..", "assets", "images");
 const IOS_ASSETS_DIR = path.join(__dirname, "..", "ios", "MoodMap", "Images.xcassets");
 
 const COLORS = {
-  purple: [109, 40, 217],
-  purple2: [139, 92, 246],
-  lavender: [248, 244, 255],
-  lavender2: [237, 229, 255],
-  white: [255, 255, 255],
-  ink: [31, 41, 55],
-  blue: [96, 165, 250],
-  green: [52, 211, 153],
+  purple:   [109, 40, 217],   // #6D28D9
+  purple2:  [139, 92, 246],   // #8B5CF6
+  purple3:  [91, 33, 182],    // #5B21B6
+  slate:    [100, 116, 139],  // #64748B
+  rose:     [251, 113, 133],  // #FB7185
+  cyan:     [34, 211, 238],   // #22D3EE
+  lavender: [248, 244, 255],  // #F8F4FF
+  lavender2:[237, 229, 255],  // #EDE5FF
+  cheek:    [233, 213, 255],  // #E9D5FF
+  white:    [255, 255, 255],
+  ink:      [31, 41, 55],     // #1F2937
+  mint:     [52, 211, 153],   // #34D399
 };
 
 function rgba(color, alpha = 255) {
@@ -34,7 +38,7 @@ function makeCanvas(size, transparent = false, background = COLORS.lavender) {
 function setPixel(png, x, y, color) {
   if (x < 0 || y < 0 || x >= png.width || y >= png.height) return;
   const idx = (png.width * y + x) << 2;
-  png.data[idx] = color[0];
+  png.data[idx]     = color[0];
   png.data[idx + 1] = color[1];
   png.data[idx + 2] = color[2];
   png.data[idx + 3] = color[3];
@@ -45,16 +49,10 @@ function blendPixel(png, x, y, src) {
   const idx = (png.width * y + x) << 2;
   const a = src[3] / 255;
   const inv = 1 - a;
-  png.data[idx] = Math.round(src[0] * a + png.data[idx] * inv);
+  png.data[idx]     = Math.round(src[0] * a + png.data[idx]     * inv);
   png.data[idx + 1] = Math.round(src[1] * a + png.data[idx + 1] * inv);
   png.data[idx + 2] = Math.round(src[2] * a + png.data[idx + 2] * inv);
-  png.data[idx + 3] = Math.round(src[3] + png.data[idx + 3] * inv);
-}
-
-function fillRect(png, x0, y0, w, h, color) {
-  for (let y = y0; y < y0 + h; y += 1) {
-    for (let x = x0; x < x0 + w; x += 1) blendPixel(png, x, y, color);
-  }
+  png.data[idx + 3] = Math.round(src[3]     + png.data[idx + 3] * inv);
 }
 
 function fillCircle(png, cx, cy, radius, color) {
@@ -117,7 +115,7 @@ function strokeLine(png, x0, y0, x1, y1, width, color) {
 }
 
 function strokeArc(png, cx, cy, radius, start, end, width, color) {
-  const steps = Math.max(24, Math.ceil(Math.abs(end - start) * radius / 8));
+  const steps = Math.max(48, Math.ceil(Math.abs(end - start) * radius / 4));
   let prev = null;
   for (let i = 0; i <= steps; i += 1) {
     const t = start + (end - start) * (i / steps);
@@ -126,6 +124,8 @@ function strokeArc(png, cx, cy, radius, start, end, width, color) {
     prev = point;
   }
 }
+
+// ─── Arrière-plan dégradé violet ───────────────────────────────────────────
 
 function drawGradientBackground(png) {
   const { width, height } = png;
@@ -138,32 +138,56 @@ function drawGradientBackground(png) {
       setPixel(png, x, y, [r, g, b, 255]);
     }
   }
-  fillCircle(png, width * 0.22, height * 0.16, width * 0.42, rgba(COLORS.white, 28));
-  fillCircle(png, width * 0.88, height * 0.84, width * 0.46, rgba(COLORS.ink, 24));
+  // Reflets larges, assez calmes pour rester premium à taille iOS.
+  fillCircle(png, width * 0.18, height * 0.10, width * 0.46, rgba(COLORS.white, 24));
+  fillCircle(png, width * 0.88, height * 0.86, width * 0.50, [31, 41, 55, 22]);
 }
 
-function drawMoodMapMark(png, cx, cy, scale, withTile = false) {
-  const centerY = cy - 18 * scale;
+// ─── Logo MoodMap ───────────────────────────────────────────────────────────
+//
+// Le symbole combine :
+// - un visage doux, cohérent avec le composant MoodFaceIcon
+// - une boussole d'humeur segmentée, inspirée des cadrans émotionnels
+// - une lecture "carte intérieure" sans codes de performance.
+
+function drawMoodMapMark(png, cx, cy, scale, withTile = true) {
+  const ringRadius = 288 * scale;
+  const ringWidth = 76 * scale;
+  const faceRadius = 184 * scale;
+
+  // Ombre douce de l'ensemble.
+  fillCircle(png, cx + 16 * scale, cy + 24 * scale, 324 * scale, rgba(COLORS.ink, 24));
+
+  // Anneau de fond, puis trois segments pour les variations d'humeur.
+  strokeCircle(png, cx, cy, ringRadius, ringWidth, rgba(COLORS.white, 235));
+  strokeArc(png, cx, cy, ringRadius, -1.48, -0.12, ringWidth, rgba(COLORS.cyan, 245));
+  strokeArc(png, cx, cy, ringRadius, 0.26, 2.05, ringWidth, rgba(COLORS.purple2, 245));
+  strokeArc(png, cx, cy, ringRadius, 2.42, 3.92, ringWidth, rgba(COLORS.rose, 245));
+  strokeArc(png, cx, cy, ringRadius, 4.20, 4.70, ringWidth, rgba(COLORS.mint, 235));
+
+  // Petite route intérieure, pour l'idée de "map" sans surcharger.
+  strokeArc(png, cx - 8 * scale, cy + 8 * scale, 232 * scale, 0.72, 2.25, 15 * scale, rgba(COLORS.white, 160));
+  strokeArc(png, cx + 2 * scale, cy + 4 * scale, 222 * scale, -0.58, 0.25, 13 * scale, rgba(COLORS.white, 120));
+
   if (withTile) {
-    fillRoundedRect(png, cx - 214 * scale, cy - 214 * scale, 428 * scale, 428 * scale, 122 * scale, rgba(COLORS.white, 235));
-  } else {
-    fillCircle(png, cx, centerY, 166 * scale, rgba(COLORS.white, 243));
+    fillCircle(png, cx + 8 * scale, cy + 12 * scale, faceRadius, rgba(COLORS.purple3, 44));
+    fillCircle(png, cx, cy, faceRadius, rgba(COLORS.lavender, 255));
+    strokeCircle(png, cx, cy, faceRadius, 13 * scale, rgba(COLORS.white, 255));
   }
 
-  strokeCircle(png, cx, centerY, 132 * scale, 18 * scale, rgba(COLORS.purple, 218));
-  strokeCircle(png, cx, centerY, 101 * scale, 8 * scale, rgba(COLORS.lavender2, 255));
+  // Visage MoodMap level 5.
+  fillCircle(png, cx - 54 * scale, cy - 36 * scale, 17 * scale, rgba(COLORS.slate, 255));
+  fillCircle(png, cx + 54 * scale, cy - 36 * scale, 17 * scale, rgba(COLORS.slate, 255));
+  fillCircle(png, cx - 92 * scale, cy + 16 * scale, 20 * scale, rgba(COLORS.cheek, 220));
+  fillCircle(png, cx + 92 * scale, cy + 16 * scale, 20 * scale, rgba(COLORS.cheek, 220));
+  strokeArc(png, cx, cy - 12 * scale, 94 * scale, 0.44, 2.70, 19 * scale, rgba(COLORS.slate, 255));
 
-  const mTop = centerY - 52 * scale;
-  const mBase = centerY + 44 * scale;
-  const mMid = centerY - 4 * scale;
-  const stroke = 24 * scale;
-  strokeLine(png, cx - 86 * scale, mBase, cx - 86 * scale, mTop, stroke, rgba(COLORS.purple, 245));
-  strokeLine(png, cx - 86 * scale, mTop, cx - 28 * scale, mMid, stroke, rgba(COLORS.purple, 245));
-  strokeLine(png, cx - 28 * scale, mMid, cx + 28 * scale, mTop, stroke, rgba(COLORS.purple2, 245));
-  strokeLine(png, cx + 28 * scale, mTop, cx + 86 * scale, mBase, stroke, rgba(COLORS.purple2, 245));
-
-  strokeArc(png, cx, centerY + 30 * scale, 72 * scale, 0.22 * Math.PI, 0.78 * Math.PI, 13 * scale, rgba(COLORS.green, 230));
+  // Repère discret façon "position du jour".
+  fillCircle(png, cx + 186 * scale, cy - 168 * scale, 28 * scale, rgba(COLORS.white, 255));
+  fillCircle(png, cx + 186 * scale, cy - 168 * scale, 16 * scale, rgba(COLORS.mint, 255));
 }
+
+// ─── Fonctions de sortie ────────────────────────────────────────────────────
 
 function downsample(src, size) {
   const scale = src.width / size;
@@ -196,39 +220,49 @@ function savePngAt(png, file) {
   fs.writeFileSync(file, PNG.sync.write(png));
 }
 
+// ─── Générateurs ────────────────────────────────────────────────────────────
+
 function generateIcon(file, size, transparent = false) {
   const high = makeCanvas(size * 3, transparent);
   if (!transparent) drawGradientBackground(high);
-  drawMoodMapMark(high, high.width / 2, high.height / 2 - high.height * 0.02, high.width / 1024, transparent);
+  // Keep the mark inside a conservative safe area. Expo update/dev screens can
+  // display the raw square icon without the iOS rounded mask.
+  drawMoodMapMark(high, high.width / 2, high.height / 2 - high.height * 0.005, high.width / 1280, true);
   savePng(downsample(high, size), file);
 }
 
 function generateSplash() {
   const high = makeCanvas(1536, true);
-  drawMoodMapMark(high, high.width / 2, high.height / 2 - 30, 1.65, false);
+  drawMoodMapMark(high, high.width / 2, high.height / 2, high.width / 1850, true);
   savePng(downsample(high, 512), "splash-icon.png");
 }
 
 function generateIosAssets() {
+  // AppIcon 1024×1024
   const icon = makeCanvas(1024 * 3, false);
   drawGradientBackground(icon);
-  drawMoodMapMark(icon, icon.width / 2, icon.height / 2 - icon.height * 0.02, icon.width / 1024, false);
+  drawMoodMapMark(icon, icon.width / 2, icon.height / 2 - icon.height * 0.005, icon.width / 1280, true);
   savePngAt(
     downsample(icon, 1024),
     path.join(IOS_ASSETS_DIR, "AppIcon.appiconset", "App-Icon-1024x1024@1x.png")
   );
 
+  // Splash screen legacy (Expo)
   const splash = makeCanvas(444 * 3, true);
-  drawMoodMapMark(splash, splash.width / 2, splash.height / 2 - 18, splash.width / 760, false);
+  drawMoodMapMark(splash, splash.width / 2, splash.height / 2, splash.width / 535, true);
   const splashSet = path.join(IOS_ASSETS_DIR, "SplashScreenLegacy.imageset");
   savePngAt(downsample(splash, 148), path.join(splashSet, "image.png"));
   savePngAt(downsample(splash, 296), path.join(splashSet, "image@2x.png"));
   savePngAt(downsample(splash, 444), path.join(splashSet, "image@3x.png"));
 }
 
+// ─── Exécution ──────────────────────────────────────────────────────────────
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
-generateIcon("icon.png", 1024, false);
+generateIcon("icon.png",          1024, false);
 generateIcon("adaptive-icon.png", 1024, true);
-generateIcon("favicon.png", 128, false);
+generateIcon("favicon.png",        128, false);
 generateSplash();
 generateIosAssets();
+
+console.log("✓ Assets générés dans", OUT_DIR);

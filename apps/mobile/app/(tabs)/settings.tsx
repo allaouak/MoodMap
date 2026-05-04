@@ -13,6 +13,7 @@ import {
   Share,
 } from "react-native";
 import * as Sharing from "expo-sharing";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/services/auth.service";
@@ -31,7 +32,7 @@ import type { ContextualModule } from "@/types/contextual";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { isExpoGo } from "@/utils/runtime";
 
-const TIME_OPTIONS = [
+const TIME_PRESETS = [
   { label: "8h00", hour: 8, minute: 0 },
   { label: "12h00", hour: 12, minute: 0 },
   { label: "18h00", hour: 18, minute: 0 },
@@ -98,6 +99,7 @@ function SectionHeader({
 
 export default function SettingsScreen() {
   const { profile, session, user, setProfile } = useAuth();
+  const queryClient = useQueryClient();
   const { reset, setLockEnabled: setGlobalLockEnabled } = useAuthStore();
   const { consents, setConsent } = useContextualStore();
   const [consentSaving, setConsentSaving] = useState(false);
@@ -112,10 +114,35 @@ export default function SettingsScreen() {
   const [editNameValue, setEditNameValue] = useState("");
   const [editNameLoading, setEditNameLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [customHour, setCustomHour] = useState("");
+  const [customMin, setCustomMin] = useState("");
   const nativeHealthUnavailable = isExpoGo();
 
+  const invalidateContextualQueries = async () => {
+    if (!user) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["todayContextualEntry", user.id] }),
+      queryClient.invalidateQueries({ queryKey: ["contextualEntries", user.id] }),
+    ]);
+  };
+
+  const updateProfileMutation = useMutation({
+    mutationFn: (newName: string) => {
+      if (!user) throw new Error("No user");
+      return authService.updateProfile(user.id, { display_name: newName });
+    },
+    onSuccess: (updatedProfile) => {
+      setProfile(updatedProfile);
+      setEditNameVisible(false);
+    },
+  });
+
   useEffect(() => {
-    notificationService.getPrefs().then(setPrefs);
+    notificationService.getPrefs().then((p) => {
+      setPrefs(p);
+      setCustomHour(String(p.hour));
+      setCustomMin(String(p.minute).padStart(2, "0"));
+    });
     biometricService.isSupported().then(setBiometricSupported);
     biometricService.getLockEnabled().then(setLockEnabled);
   }, []);
@@ -130,9 +157,7 @@ export default function SettingsScreen() {
     if (!trimmed || !user) return;
     setEditNameLoading(true);
     try {
-      const updated = await authService.updateProfile(user.id, { display_name: trimmed });
-      setProfile(updated);
-      setEditNameVisible(false);
+      await updateProfileMutation.mutateAsync(trimmed);
     } catch {
       Alert.alert("Erreur", "Impossible de mettre à jour le nom. Réessaie.");
     } finally {
@@ -221,6 +246,7 @@ export default function SettingsScreen() {
                 }
                 await contextualConsentService.setConsent(user.id, module, true);
                 setConsent(module, true);
+                await invalidateContextualQueries();
               } catch {
                 Alert.alert("Erreur", "Impossible d'activer ce module. Réessaie.");
               } finally {
@@ -242,6 +268,7 @@ export default function SettingsScreen() {
               try {
                 await contextualConsentService.setConsent(user.id, module, false);
                 setConsent(module, false);
+                await invalidateContextualQueries();
               } catch {
                 Alert.alert("Erreur", "Impossible de désactiver ce module. Réessaie.");
               } finally {
@@ -258,6 +285,7 @@ export default function SettingsScreen() {
                 await contextualConsentService.setConsent(user.id, module, false);
                 await contextualConsentService.deleteModuleData(user.id, module);
                 setConsent(module, false);
+                await invalidateContextualQueries();
               } catch {
                 Alert.alert("Erreur", "Impossible de désactiver ce module. Réessaie.");
               } finally {
@@ -277,11 +305,27 @@ export default function SettingsScreen() {
     try {
       await notificationService.apply(next);
       setPrefs(next);
+      setCustomHour(String(hour));
+      setCustomMin(String(minute).padStart(2, "0"));
     } catch {
       Alert.alert("Erreur", "Impossible de mettre à jour l'heure. Réessaie.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const applyCustomTime = async () => {
+    const h = parseInt(customHour, 10);
+    const m = parseInt(customMin, 10);
+    if (isNaN(h) || h < 0 || h > 23) {
+      Alert.alert("Heure invalide", "L'heure doit être comprise entre 0 et 23.");
+      return;
+    }
+    if (isNaN(m) || m < 0 || m > 59) {
+      Alert.alert("Minutes invalides", "Les minutes doivent être comprises entre 0 et 59.");
+      return;
+    }
+    await handleTimeSelect(h, m);
   };
 
   const handleDeleteAccount = () => {
@@ -305,12 +349,13 @@ export default function SettingsScreen() {
   const handleExportData = async () => {
     if (!user) return;
     setExportLoading(true);
+    let fileUri: string | null = null;
     try {
       const email = session?.user?.email ?? null;
-      const fileUri = await dataExportService.writeExportFile(user.id, email);
       const canShareFile = await Sharing.isAvailableAsync();
 
       if (canShareFile) {
+        fileUri = await dataExportService.writeExportFile(user.id, email);
         await Sharing.shareAsync(fileUri, {
           mimeType: "application/json",
           dialogTitle: "Exporter mes données MoodMap",
@@ -326,6 +371,7 @@ export default function SettingsScreen() {
     } catch {
       Alert.alert("Erreur", "Impossible de préparer l'export de tes données. Réessaie.");
     } finally {
+      if (fileUri) dataExportService.deleteExportFile(fileUri);
       setExportLoading(false);
     }
   };
@@ -439,35 +485,56 @@ export default function SettingsScreen() {
 
               {prefs.enabled && (
                 <View style={styles.timeSection}>
-                  <Text style={styles.timeSectionLabel}>Heure du rappel</Text>
+                  <Text style={styles.timeSectionLabel}>Raccourcis</Text>
                   <View style={styles.timeOptions}>
-                    {TIME_OPTIONS.map((opt) => {
+                    {TIME_PRESETS.map((opt) => {
                       const selected =
                         prefs.hour === opt.hour && prefs.minute === opt.minute;
                       return (
                         <TouchableOpacity
                           key={opt.label}
-                          style={[
-                            styles.timeChip,
-                            selected && styles.timeChipSelected,
-                          ]}
+                          style={[styles.timeChip, selected && styles.timeChipSelected]}
                           activeOpacity={0.7}
-                          onPress={() =>
-                            handleTimeSelect(opt.hour, opt.minute)
-                          }
+                          onPress={() => handleTimeSelect(opt.hour, opt.minute)}
                           disabled={saving}
                         >
-                          <Text
-                            style={[
-                              styles.timeChipText,
-                              selected && styles.timeChipTextSelected,
-                            ]}
-                          >
+                          <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>
                             {opt.label}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
+                  </View>
+
+                  <Text style={styles.timeSectionLabel}>Heure personnalisée</Text>
+                  <View style={styles.customTimeRow}>
+                    <TextInput
+                      style={styles.customTimeInput}
+                      value={customHour}
+                      onChangeText={(t) => setCustomHour(t.replace(/\D/g, "").slice(0, 2))}
+                      keyboardType="numeric"
+                      maxLength={2}
+                      placeholder="HH"
+                      placeholderTextColor="#D1D5DB"
+                    />
+                    <Text style={styles.customTimeSep}>:</Text>
+                    <TextInput
+                      style={styles.customTimeInput}
+                      value={customMin}
+                      onChangeText={(t) => setCustomMin(t.replace(/\D/g, "").slice(0, 2))}
+                      keyboardType="numeric"
+                      maxLength={2}
+                      placeholder="MM"
+                      placeholderTextColor="#D1D5DB"
+                    />
+                    <TouchableOpacity
+                      style={[styles.customTimeApply, saving && styles.actionDisabled]}
+                      onPress={applyCustomTime}
+                      disabled={saving}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.customTimeApplyText}>Définir</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}
@@ -500,9 +567,9 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Données contextuelles */}
+        {/* Mon quotidien */}
         <View style={styles.card}>
-          <SectionHeader icon="database-outline" title="Données contextuelles" />
+          <SectionHeader icon="database-outline" title="Mon quotidien" />
           <Text style={styles.contextualIntro}>
             Enrichis ton journal avec des données de ton quotidien. Chaque module est indépendant et révocable.
           </Text>
@@ -877,5 +944,38 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 16,
     color: "#1F2937",
+  },
+
+  customTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  customTimeInput: {
+    width: 52,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingVertical: 10,
+    fontSize: 18,
+    fontWeight: "600",
+    textAlign: "center",
+    color: "#1F2937",
+  },
+  customTimeSep: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#6B7280",
+  },
+  customTimeApply: {
+    backgroundColor: "#EDE5FF",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  customTimeApplyText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#6D28D9",
   },
 });

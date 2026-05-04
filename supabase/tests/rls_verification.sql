@@ -138,26 +138,43 @@ BEGIN
     'ÉCHEC TEST 5 : user_a a pu transférer son entrée vers user_b (WITH CHECK manquant)';
   RAISE NOTICE 'TEST 5 PASSÉ : transfert user_id bloqué (WITH CHECK)';
 
-  -- TEST 6 : user_a ne peut pas lire le profil de user_b
+  -- TEST 6 : user_a ne peut pas insérer une entrée pour user_b
+  SET LOCAL role TO authenticated;
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
+  BEGIN
+    INSERT INTO public.mood_entries (user_id, mood, energy, stress, tags, entry_date)
+    VALUES (user_b_id, 2, 2, 4, '{}', CURRENT_DATE - 2);
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  RESET role;
+  SELECT COUNT(*) INTO result_count
+  FROM public.mood_entries WHERE user_id = user_b_id AND entry_date = CURRENT_DATE - 2;
+  ASSERT result_count = 0,
+    'ÉCHEC TEST 6 : user_a a pu insérer une entrée pour user_b';
+  RAISE NOTICE 'TEST 6 PASSÉ : insertion croisée mood_entries bloquée';
+
+  -- TEST 7 : user_a ne peut pas lire le profil de user_b
   SET LOCAL role TO authenticated;
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
   SELECT COUNT(*) INTO result_count FROM public.profiles WHERE id = user_b_id;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 6 : user_a peut lire le profil de user_b';
-  RAISE NOTICE 'TEST 6 PASSÉ : lecture profil croisée bloquée';
+    'ÉCHEC TEST 7 : user_a peut lire le profil de user_b';
+  RAISE NOTICE 'TEST 7 PASSÉ : lecture profil croisée bloquée';
 
-  -- TEST 7 : user_a ne peut pas s'auto-attribuer premium
+  -- TEST 8 : user_a ne peut pas s'auto-attribuer premium
   -- Le profil de user_a existe (fixture) → pas de faux positif possible
   UPDATE public.profiles SET premium = true WHERE id = user_a_id;
   RESET role;
   SELECT COUNT(*) INTO result_count
   FROM public.profiles WHERE id = user_a_id AND premium = true;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 7 : user_a a pu s''auto-attribuer premium=true';
-  RAISE NOTICE 'TEST 7 PASSÉ : auto-attribution premium bloquée';
+    'ÉCHEC TEST 8 : user_a a pu s''auto-attribuer premium=true';
+  RAISE NOTICE 'TEST 8 PASSÉ : auto-attribution premium bloquée';
 
-  -- TEST 8 : service_role peut mettre à jour premium via set_user_premium()
+  -- TEST 9 : service_role peut mettre à jour premium via set_user_premium()
   RESET role;
   PERFORM set_config('request.jwt.claims',
     json_build_object('role', 'service_role')::text, true);
@@ -165,43 +182,55 @@ BEGIN
   SELECT COUNT(*) INTO result_count
   FROM public.profiles WHERE id = user_a_id AND premium = true;
   ASSERT result_count = 1,
-    'ÉCHEC TEST 8 : set_user_premium() n''a pas mis à jour premium';
-  RAISE NOTICE 'TEST 8 PASSÉ : set_user_premium() fonctionne en service_role';
+    'ÉCHEC TEST 9 : set_user_premium() n''a pas mis à jour premium';
+  RAISE NOTICE 'TEST 9 PASSÉ : set_user_premium() fonctionne en service_role';
 
-  -- TEST 9 : user_a ne peut pas lire les consentements contextuels de user_b
+  -- TEST 10 : user_a ne peut pas lire les consentements contextuels de user_b
   SET LOCAL role TO authenticated;
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
   SELECT COUNT(*) INTO result_count
   FROM public.contextual_consent WHERE user_id = user_b_id;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 9 : user_a peut lire les consentements de user_b';
-  RAISE NOTICE 'TEST 9 PASSÉ : lecture croisée contextual_consent bloquée';
+    'ÉCHEC TEST 10 : user_a peut lire les consentements de user_b';
+  RAISE NOTICE 'TEST 10 PASSÉ : lecture croisée contextual_consent bloquée';
 
-  -- TEST 10 : user_a ne peut pas lire les données contextuelles de user_b
+  -- TEST 11 : user_a ne peut pas lire les données contextuelles de user_b
   SELECT COUNT(*) INTO result_count
   FROM public.contextual_entries WHERE user_id = user_b_id;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 10 : user_a peut lire les données contextuelles de user_b';
-  RAISE NOTICE 'TEST 10 PASSÉ : lecture croisée contextual_entries bloquée';
+    'ÉCHEC TEST 11 : user_a peut lire les données contextuelles de user_b';
+  RAISE NOTICE 'TEST 11 PASSÉ : lecture croisée contextual_entries bloquée';
 
-  -- TEST 11 : user_a peut lire ses propres données contextuelles
+  -- TEST 12 : user_a peut lire ses propres données contextuelles
   SELECT COUNT(*) INTO result_count
   FROM public.contextual_entries WHERE user_id = user_a_id;
   ASSERT result_count = 1,
-    'ÉCHEC TEST 11 : user_a ne peut pas lire ses propres données contextuelles';
-  RAISE NOTICE 'TEST 11 PASSÉ : lecture propre contextual_entries autorisée';
+    'ÉCHEC TEST 12 : user_a ne peut pas lire ses propres données contextuelles';
+  RAISE NOTICE 'TEST 12 PASSÉ : lecture propre contextual_entries autorisée';
 
-  -- TEST 12 : user_a ne peut pas modifier les données contextuelles de user_b
+  -- TEST 13 : user_a ne peut pas modifier les données contextuelles de user_b
   UPDATE public.contextual_entries SET activity_steps = 9000 WHERE id = user_b_context;
   RESET role;
   SELECT COUNT(*) INTO result_count
   FROM public.contextual_entries WHERE id = user_b_context AND activity_steps = 9000;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 12 : user_a a pu modifier les données contextuelles de user_b';
-  RAISE NOTICE 'TEST 12 PASSÉ : modification croisée contextual_entries bloquée';
+    'ÉCHEC TEST 13 : user_a a pu modifier les données contextuelles de user_b';
+  RAISE NOTICE 'TEST 13 PASSÉ : modification croisée contextual_entries bloquée';
 
-  -- TEST 13 : user_a ne peut pas transférer ses données contextuelles vers user_b
+  -- TEST 14 : user_a ne peut pas supprimer les données contextuelles de user_b
+  SET LOCAL role TO authenticated;
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
+  DELETE FROM public.contextual_entries WHERE id = user_b_context;
+  RESET role;
+  SELECT COUNT(*) INTO result_count
+  FROM public.contextual_entries WHERE id = user_b_context;
+  ASSERT result_count = 1,
+    'ÉCHEC TEST 14 : user_a a pu supprimer les données contextuelles de user_b';
+  RAISE NOTICE 'TEST 14 PASSÉ : suppression croisée contextual_entries bloquée';
+
+  -- TEST 15 : user_a ne peut pas transférer ses données contextuelles vers user_b
   SET LOCAL role TO authenticated;
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
@@ -214,10 +243,10 @@ BEGIN
   SELECT COUNT(*) INTO result_count
   FROM public.contextual_entries WHERE id = user_a_context AND user_id = user_b_id;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 13 : user_a a pu transférer une ligne contextual_entries vers user_b';
-  RAISE NOTICE 'TEST 13 PASSÉ : transfert contextual_entries bloqué';
+    'ÉCHEC TEST 15 : user_a a pu transférer une ligne contextual_entries vers user_b';
+  RAISE NOTICE 'TEST 15 PASSÉ : transfert contextual_entries bloqué';
 
-  -- TEST 14 : sans consentement screen_time, user_a ne peut pas écrire le temps d'écran
+  -- TEST 16 : sans consentement screen_time, user_a ne peut pas écrire le temps d'écran
   SET LOCAL role TO authenticated;
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', user_a_id::text, 'role', 'authenticated')::text, true);
@@ -233,10 +262,10 @@ BEGIN
   FROM public.contextual_entries
   WHERE id = user_a_context AND screen_total_min IS NOT NULL;
   ASSERT result_count = 0,
-    'ÉCHEC TEST 14 : user_a a pu écrire screen_time sans consentement actif';
-  RAISE NOTICE 'TEST 14 PASSÉ : écriture screen_time sans consentement bloquée';
+    'ÉCHEC TEST 16 : user_a a pu écrire screen_time sans consentement actif';
+  RAISE NOTICE 'TEST 16 PASSÉ : écriture screen_time sans consentement bloquée';
 
-  RAISE NOTICE '✅ Tous les tests RLS sont passés (14/14).';
+  RAISE NOTICE '✅ Tous les tests RLS sont passés (16/16).';
 
 EXCEPTION WHEN OTHERS THEN
   RESET role;

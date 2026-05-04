@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -26,10 +26,10 @@ import { useAuthStore } from "@/stores/auth.store";
 import { moodService } from "@/services/mood.service";
 import { contextualEntryService } from "@/services/contextual-entry.service";
 import { MoodEntry, MOOD_COLOR, MOOD_LABELS } from "@/types";
-import type { ContextualEntry } from "@/types/contextual";
 import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { formatTime } from "@/utils/date";
+import { useQuery } from "@tanstack/react-query";
 import {
   contextualEntryForDate,
   formatHoursFromMinutes,
@@ -55,47 +55,46 @@ function entryForDay(entries: MoodEntry[], day: Date): MoodEntry | undefined {
 export default function CalendarScreen() {
   const { user } = useAuthStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [entries, setEntries] = useState<MoodEntry[]>([]);
-  const [contextualEntries, setContextualEntries] = useState<ContextualEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Date | null>(null);
-  const mountedRef = useRef(true);
 
-  const loadMonth = useCallback(
-    async (month: Date) => {
-      if (!user) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const from = format(startOfMonth(month), "yyyy-MM-dd");
-        const to = format(endOfMonth(month), "yyyy-MM-dd");
-        const [moodData, contextualData] = await Promise.all([
-          moodService.getEntries(user.id, from, to),
-          contextualEntryService.getForDateRange(user.id, from, to),
-        ]);
-        if (mountedRef.current) {
-          setEntries(moodData);
-          setContextualEntries(contextualData);
-        }
-      } catch {
-        if (mountedRef.current) setError("Impossible de charger le calendrier. Vérifie ta connexion.");
-      } finally {
-        if (mountedRef.current) setLoading(false);
-      }
+  const userId = user?.id;
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const fromDate = format(monthStart, "yyyy-MM-dd");
+  const toDate = format(monthEnd, "yyyy-MM-dd");
+
+  const { data: moodEntriesData, isLoading: isLoadingMood, error: moodError } = useQuery({
+    queryKey: ['moodEntries', userId, fromDate, toDate],
+    queryFn: () => {
+      if (!userId) throw new Error("User not authenticated");
+      return moodService.getEntries(userId, fromDate, toDate);
     },
-    [user]
-  );
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+
+  const { data: contextualEntriesData, isLoading: isLoadingContextual, error: contextualError } = useQuery({
+    queryKey: ['contextualEntries', userId, fromDate, toDate],
+    queryFn: () => {
+      if (!userId) throw new Error("User not authenticated");
+      return contextualEntryService.getForDateRange(userId, fromDate, toDate);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+
+  const loading = isLoadingMood || isLoadingContextual;
+  const error = moodError || contextualError ? "Impossible de charger le calendrier. Vérifie ta connexion." : null;
 
   useEffect(() => {
-    mountedRef.current = true;
-    loadMonth(currentMonth);
+    // Les données sont automatiquement chargées par useQuery lorsque currentMonth change
     setSelected(null);
-    return () => { mountedRef.current = false; };
-  }, [currentMonth, loadMonth]);
+  }, [currentMonth]);
 
   const days = buildGrid(currentMonth);
-  const selectedEntry = selected ? entryForDay(entries, selected) : undefined;
+  const moodEntries = moodEntriesData ?? [];
+  const contextualEntries = contextualEntriesData ?? [];
+  const selectedEntry = selected ? entryForDay(moodEntries, selected) : undefined;
   const selectedContextual = selected
     ? contextualEntryForDate(contextualEntries, format(selected, "yyyy-MM-dd"))
     : undefined;
@@ -168,7 +167,7 @@ export default function CalendarScreen() {
           ) : (
             <View style={styles.grid}>
               {days.map((day) => {
-                const entry = entryForDay(entries, day);
+                const entry = entryForDay(moodEntries, day);
                 const inMonth = isSameMonth(day, currentMonth);
                 const today = isToday(day);
                 const isSelected = selected ? isSameDay(day, selected) : false;
@@ -355,7 +354,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#F8F4FF" },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 16 },
+  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 96, gap: 14 },
 
   header: { gap: 4, paddingHorizontal: 4 },
   pageTitle: { fontSize: 28, lineHeight: 34, fontWeight: "700", color: "#1F2937" },
@@ -364,8 +363,10 @@ const styles = StyleSheet.create({
   calendarCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    padding: 14,
-    gap: 10,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 8,
   },
   monthHeader: {
     flexDirection: "row",
@@ -373,9 +374,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 4,
   },
-  navBtn: { padding: 8 },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   navBtnDisabled: { opacity: 0.3 },
-  navArrow: { fontSize: 28, color: "#6D28D9", fontWeight: "300" },
+  navArrow: { fontSize: 28, lineHeight: 32, color: "#6D28D9", fontWeight: "300" },
   navArrowDisabled: { color: "#9CA3AF" },
   monthTitle: {
     fontSize: 18,
@@ -384,40 +391,54 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
 
-  dayLabels: { flexDirection: "row" },
-  dayLabelCell: { flex: 1, alignItems: "center", paddingVertical: 4 },
+  dayLabels: { flexDirection: "row", marginTop: 6 },
+  dayLabelCell: { flex: 1, alignItems: "center", paddingVertical: 2 },
   dayLabelText: { fontSize: 12, fontWeight: "600", color: "#9CA3AF" },
 
   loader: { paddingVertical: 60, alignItems: "center" },
 
-  grid: { flexDirection: "row", flexWrap: "wrap" },
+  grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 0 },
   dayCell: {
     width: "14.285714%",
-    aspectRatio: 1,
+    height: 44,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    borderRadius: 12,
+    justifyContent: "flex-start",
+    paddingTop: 7,
+    gap: 4,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
-  dayCellSelected: { backgroundColor: "#EDE5FF" },
-  dayCellToday: { backgroundColor: "#F3F0FF" },
-  dayNumber: { fontSize: 14, fontWeight: "500", color: "#374151" },
+  dayCellSelected: {
+    backgroundColor: "#EDE5FF",
+    borderColor: "#DDD1FF",
+  },
+  dayCellToday: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#C4B5FD",
+  },
+  dayNumber: { fontSize: 14, lineHeight: 20, fontWeight: "500", color: "#374151" },
   dayNumberMuted: { color: "#D1D5DB" },
   dayNumberToday: { color: "#6D28D9", fontWeight: "700" },
   dayNumberSelected: { color: "#6D28D9", fontWeight: "700" },
-  moodDot: { width: 6, height: 6, borderRadius: 3 },
-  moodDotEmpty: { width: 6, height: 6 },
+  moodDot: { width: 6, height: 6, borderRadius: 3, transform: [{ translateY: -4 }] },
+  moodDotEmpty: { width: 6, height: 6, transform: [{ translateY: -4 }] },
 
   legend: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
     justifyContent: "center",
-    paddingVertical: 4,
+    alignSelf: "center",
+    backgroundColor: "#F9FAFB",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginTop: 0,
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { fontSize: 11, color: "#6B7280" },
+  legendDot: { width: 7, height: 7, borderRadius: 3.5 },
+  legendLabel: { fontSize: 10.5, color: "#6B7280", fontWeight: "500" },
 
   detailCard: {
     backgroundColor: "#FFFFFF",

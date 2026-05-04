@@ -81,4 +81,13 @@ export const dataExportService = {
     file.write(json, { encoding: "utf8" });
     return file.uri;
   },
+
+  deleteExportFile(fileUri: string): void {
+    try {
+      const file = new File(fileUri);
+      if (file.exists) file.delete();
+    } catch {
+      // Best effort cleanup: export sharing must not fail because cache cleanup did.
+    }
+  },
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { format, subDays, parseISO } from "date-fns";
+import { useQueries } from "@tanstack/react-query";
 import { fr } from "date-fns/locale";
 import { useAuthStore } from "@/stores/auth.store";
 import { moodService } from "@/services/mood.service";
@@ -144,8 +145,7 @@ function MiniBar({ entry }: { entry: MoodEntry }) {
           <Text style={styles.miniBarValue}>{entry.mood}</Text>
         </View>
       </View>
-      <Text style={styles.miniBarDate}>{format(date, "dd", { locale: fr })}</Text>
-      <Text style={styles.miniBarMood}>{MOOD_LABELS[entry.mood]}</Text>
+      <Text style={styles.miniBarDate}>{format(date, "EEE", { locale: fr })}</Text>
     </View>
   );
 }
@@ -186,50 +186,66 @@ function ObservationItem({ observation }: { observation: ContextualObservation }
 
 export default function InsightsScreen() {
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats7, setStats7] = useState<Stats | null>(null);
-  const [stats30, setStats30] = useState<Stats | null>(null);
-  const [contextual7, setContextual7] = useState<ContextualStats | null>(null);
-  const [contextual30, setContextual30] = useState<ContextualStats | null>(null);
-  const [contextualObservations, setContextualObservations] = useState<ContextualObservation[]>([]);
-  const mountedRef = useRef(true);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      const from7 = format(subDays(new Date(), 6), "yyyy-MM-dd");
-      const from30 = format(subDays(new Date(), 29), "yyyy-MM-dd");
+  const userId = user?.id;
+  const today = format(new Date(), "yyyy-MM-dd");
+  const from7 = format(subDays(new Date(), 6), "yyyy-MM-dd");
+  const from30 = format(subDays(new Date(), 29), "yyyy-MM-dd");
 
-      const [e7, e30, c7, c30] = await Promise.all([
-        moodService.getEntries(user.id, from7, today),
-        moodService.getEntries(user.id, from30, today),
-        contextualEntryService.getForDateRange(user.id, from7, today),
-        contextualEntryService.getForDateRange(user.id, from30, today),
-      ]);
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: ['moodEntries', userId, '7days', from7, today],
+        queryFn: () => {
+          if (!userId) throw new Error("User not authenticated");
+          return moodService.getEntries(userId, from7, today);
+        },
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+      },
+      {
+        queryKey: ['moodEntries', userId, '30days', from30, today],
+        queryFn: () => {
+          if (!userId) throw new Error("User not authenticated");
+          return moodService.getEntries(userId, from30, today);
+        },
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+      },
+      {
+        queryKey: ['contextualEntries', userId, '7days', from7, today],
+        queryFn: () => {
+          if (!userId) throw new Error("User not authenticated");
+          return contextualEntryService.getForDateRange(userId, from7, today);
+        },
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+      },
+      {
+        queryKey: ['contextualEntries', userId, '30days', from30, today],
+        queryFn: () => {
+          if (!userId) throw new Error("User not authenticated");
+          return contextualEntryService.getForDateRange(userId, from30, today);
+        },
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+      },
+    ],
+  });
 
-      if (mountedRef.current) {
-        setStats7(computeStats(e7));
-        setStats30(computeStats(e30));
-        setContextual7(computeContextualStats(c7));
-        setContextual30(computeContextualStats(c30));
-        setContextualObservations(buildContextualObservations(e30, c30));
-      }
-    } catch {
-      if (mountedRef.current) setError("Impossible de charger les tendances. Vérifie ta connexion.");
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    load();
-    return () => { mountedRef.current = false; };
-  }, [load]);
+  const mood7 = results[0].data ?? [];
+  const mood30 = results[1].data ?? [];
+  const contextual7Data = results[2].data ?? [];
+  const contextual30Data = results[3].data ?? [];
+  const loading = results.some((result) => result.isLoading);
+  const error = results.some((result) => result.isError)
+    ? "Impossible de charger les tendances. Vérifie ta connexion."
+    : null;
+  const stats7 = computeStats(mood7);
+  const stats30 = computeStats(mood30);
+  const contextual7 = computeContextualStats(contextual7Data);
+  const contextual30 = computeContextualStats(contextual30Data);
+  const contextualObservations = buildContextualObservations(mood30, contextual30Data);
 
   if (loading) {
     return (
@@ -264,10 +280,10 @@ export default function InsightsScreen() {
 
         {!hasData ? (
           <View style={styles.emptyState}>
-            <AppIcon name="chart-line" size={30} frameSize={60} />
-            <Text style={styles.emptyTitle}>Pas encore assez de données</Text>
+            <AppIcon name="chart-line" color="#6D28D9" backgroundColor="#F3E8FF" size={30} frameSize={60} />
+            <Text style={styles.emptyTitle}>Tes tendances arrivent</Text>
             <Text style={styles.emptySubtitle}>
-              Fais quelques check-ins quotidiens pour voir tes tendances apparaître ici.
+              Reviens après quelques jours de check-ins. Tes premières courbes apparaîtront après 3 entrées.
             </Text>
           </View>
         ) : (
@@ -528,7 +544,7 @@ const styles = StyleSheet.create({
     minHeight: 82,
     paddingTop: 4,
   },
-  miniBarCol: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 3 },
+  miniBarCol: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 4 },
   miniBarTrack: {
     width: "100%",
     height: 48,
@@ -542,8 +558,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   miniBarValue: { fontSize: 12, color: "#FFFFFF", fontWeight: "800" },
-  miniBarDate: { fontSize: 10, color: "#9CA3AF", fontWeight: "600" },
-  miniBarMood: { fontSize: 9, color: "#6B7280", fontWeight: "600" },
+  miniBarDate: { fontSize: 11, color: "#9CA3AF", fontWeight: "600", textTransform: "capitalize" },
 
   statRow: { flexDirection: "row", gap: 8 },
   statCard: {

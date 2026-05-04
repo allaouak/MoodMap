@@ -36,10 +36,14 @@ Toutes les tables applicatives ont RLS activé. Politiques en place :
 
 | Table | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
-| `profiles` | Propriétaire | — | Propriétaire (sans `premium`) | — |
+| `profiles` | Propriétaire | Propriétaire avec `premium=false` | Propriétaire (sans `premium`) | — |
 | `mood_entries` | Propriétaire | Propriétaire | Propriétaire | Propriétaire |
+| `contextual_consent` | Propriétaire | Propriétaire | Propriétaire | Propriétaire |
+| `contextual_entries` | Propriétaire | Propriétaire + consentement actif | Propriétaire + consentement actif pour les données non nulles | Propriétaire |
 
 **Protection premium** : le champ `premium` ne peut pas être modifié par un client `authenticated`. Un trigger BEFORE UPDATE inspecte le claim JWT et annule silencieusement toute tentative. Seul `service_role` (webhook RevenueCat via Edge Function) peut modifier ce champ via `set_user_premium()`.
+
+**Protection contextuelle** : un trigger SQL bloque l'écriture de données de sommeil, d'activité ou de temps d'écran sans consentement actif pour le module concerné. La mise à `NULL` reste autorisée pour permettre la révocation et la suppression des données déjà enregistrées.
 
 ---
 
@@ -80,9 +84,11 @@ Toutes les tables applicatives ont RLS activé. Politiques en place :
 | Vol de session | SecureStore (Keychain iOS), auto-refresh court |
 | Élévation de privilège (premium) | Trigger + JWT role check + `set_user_premium` service_role only |
 | Accès aux données d'un autre utilisateur | RLS `auth.uid()` sur toutes les tables |
+| Collecte contextuelle sans consentement | Consentements granulaires + trigger `require_contextual_consent()` |
 | Injection via URL scheme | Parsing strict + validation regex du code PKCE |
 | Suppression de compte malveillante | Confirmation par mot de passe (ré-authentification Supabase) |
 | Fuite via messages d'erreur | Messages génériques côté client |
+| Export de données laissé en cache | Suppression best-effort du fichier temporaire après partage |
 | Enumération d'emails | Message d'erreur identique succès/échec sur forgot-password |
 
 ---
@@ -101,6 +107,6 @@ Toutes les tables applicatives ont RLS activé. Politiques en place :
 - [ ] Confirmer que la clé `service_role` n'est jamais exposée côté client
 - [ ] Activer les alertes de login suspect dans Supabase Auth
 - [ ] Configurer un rate limit sur les endpoints auth (Supabase → Auth → Rate Limits)
-- [ ] Tester les 5 scénarios RLS avec `supabase/tests/rls_verification.sql`
+- [ ] Tester les 16 scénarios RLS avec `supabase/tests/rls_verification.sql`
 - [ ] Vérifier le certificat SSL du domaine custom si configuré
 - [ ] Activer Sentry (ou équivalent) avec filtrage des données personnelles

@@ -4,6 +4,7 @@ import { Slot, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./global.css";
 import { useAuthListener, useAuth } from "@/hooks/useAuth";
 import { useContextualConsentsLoader } from "@/hooks/useContextualConsents";
@@ -16,6 +17,15 @@ import { initSentry } from "@/lib/sentry";
 initSentry();
 
 SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export default function RootLayout() {
   useAuthListener();
@@ -130,10 +140,10 @@ export default function RootLayout() {
   }, [session, isLoading, isRecovery, lockChecked]);
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <StatusBar style={isLocked ? "light" : "auto"} />
       <Slot />
       {isLocked && <AppLockOverlay onUnlock={() => setIsLocked(false)} />}
-    </>
+    </QueryClientProvider>
   );
 }

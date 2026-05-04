@@ -9,6 +9,7 @@ interface MoodSliderProps {
   value: MoodLevel;
   onChange: (value: MoodLevel) => void;
   emoji?: boolean;
+  anchors?: readonly [string, string];
 }
 
 const LEVELS: MoodLevel[] = [1, 2, 3, 4, 5];
@@ -18,6 +19,7 @@ export function MoodSlider({
   value,
   onChange,
   emoji = false,
+  anchors,
 }: MoodSliderProps) {
   const handlePress = (level: MoodLevel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -25,7 +27,7 @@ export function MoodSlider({
   };
 
   return (
-    <View className="w-full gap-3">
+    <View className="w-full gap-2">
       <Text className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
         {label}
       </Text>
@@ -63,6 +65,12 @@ export function MoodSlider({
           );
         })}
       </View>
+      {!emoji && anchors && (
+        <View className="flex-row justify-between px-1">
+          <Text className="text-xs text-gray-400">{anchors[0]}</Text>
+          <Text className="text-xs text-gray-400">{anchors[1]}</Text>
+        </View>
+      )}
     </View>
   );
 }
