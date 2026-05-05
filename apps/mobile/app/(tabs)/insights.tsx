@@ -135,7 +135,7 @@ export default function InsightsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      <SafeAreaView style={styles.safe} edges={["top"]} testID="insights-container">
         <View style={styles.loader}>
           <ActivityIndicator color="#6D28D9" />
         </View>
@@ -145,7 +145,7 @@ export default function InsightsScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      <SafeAreaView style={styles.safe} edges={["top"]} testID="insights-container">
         <View style={styles.loader}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
@@ -156,7 +156,7 @@ export default function InsightsScreen() {
   const hasData = stats7.entries.length > 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]} testID="insights-container">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

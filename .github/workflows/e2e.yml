@@ -67,7 +67,13 @@ jobs:
       - name: Run Maestro flows
         run: |
           export PATH="$PATH:$HOME/.maestro/bin"
-          maestro test .maestro/ \
+          maestro test \
+            .maestro/auth-login-failed.yaml \
+            .maestro/auth-login.yaml \
+            .maestro/check-in-smoke.yaml \
+            .maestro/calendar-navigation.yaml \
+            .maestro/insights-smoke.yaml \
+            .maestro/settings-delete-account-cancel.yaml \
             --env APP_ID="$APP_ID" \
             --env TEST_EMAIL="$TEST_EMAIL" \
             --env TEST_PASSWORD="$TEST_PASSWORD" \

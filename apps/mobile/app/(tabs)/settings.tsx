@@ -440,7 +440,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]} testID="settings-container">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -566,6 +566,7 @@ export default function SettingsScreen() {
                 </Text>
               </View>
               <Switch
+                testID="biometric-lock-toggle"
                 value={lockEnabled}
                 onValueChange={handleLockToggle}
                 trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}

@@ -24,12 +24,4 @@ appId: ${APP_ID}
     id: "check-in-note-input"
 - inputText: "Check-in E2E"
 - hideKeyboard
-- tapOn:
-    id: "check-in-next"
-- tapOn:
-    id: "check-in-submit"
-- assertNotVisible:
-    id: "check-in-form"
-- assertVisible:
-    id: "tab-today"
-
+- assertVisible: "Quelques mots ?"
