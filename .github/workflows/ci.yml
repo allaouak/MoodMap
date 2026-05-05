@@ -47,13 +47,5 @@ jobs:
       - name: Tests
         run: pnpm -r test --ci --coverage
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: apps/mobile/coverage/lcov.info
-          flags: mobile
-          fail_ci_if_error: false
-
       - name: Audit
         run: pnpm audit --audit-level moderate
