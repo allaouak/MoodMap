@@ -5,9 +5,6 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import "./global.css";
 import { useAuthListener, useAuth } from "@/hooks/useAuth";
 import { useContextualConsentsLoader } from "@/hooks/useContextualConsents";
@@ -20,13 +17,6 @@ import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 initSentry();
 
 SplashScreen.preventAutoHideAsync();
-
-const asyncStoragePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: "tanstack-query",
-  serialize: (data) => JSON.stringify(data),
-  deserialize: (data) => JSON.parse(data),
-});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,9 +34,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-// Configuration de persistance (simplifiée pour l'instant)
-// La persistance sera gérée au niveau des hooks individuellement
 
 export default function RootLayout() {
   useAuthListener();

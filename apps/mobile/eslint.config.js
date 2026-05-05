@@ -8,6 +8,7 @@ module.exports = tseslint.config(
     ignores: [
       "node_modules/**",
       ".expo/**",
+      "coverage/**",
       "dist/**",
       "babel.config.js",
       "metro.config.js",

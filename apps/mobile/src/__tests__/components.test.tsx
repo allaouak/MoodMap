@@ -1,5 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
+import { TextInput, TouchableOpacity } from "react-native";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 
@@ -26,7 +27,7 @@ describe("Button", () => {
   });
 
   it("affiche un ActivityIndicator en état loading", () => {
-    const { queryByText, getByTestId } = render(
+    const { queryByText } = render(
       <Button label="Connexion" loading />
     );
     expect(queryByText("Connexion")).toBeNull();
@@ -39,7 +40,6 @@ describe("Button", () => {
       <Button label="Connexion" loading onPress={onPress} />
     );
     // The TouchableOpacity is disabled when loading
-    const { TouchableOpacity } = require("react-native");
     const touchable = UNSAFE_getByType(TouchableOpacity);
     expect(touchable.props.disabled).toBe(true);
   });
@@ -91,7 +91,6 @@ describe("Input", () => {
   it("transmet onChangeText à TextInput", () => {
     const onChange = jest.fn();
     const { UNSAFE_getByType } = render(<Input onChangeText={onChange} />);
-    const { TextInput } = require("react-native");
     const input = UNSAFE_getByType(TextInput);
     fireEvent.changeText(input, "test@test.com");
     expect(onChange).toHaveBeenCalledWith("test@test.com");
