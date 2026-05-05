@@ -7,6 +7,11 @@ Ces flows couvrent les premiers chemins critiques MoodMap : authentification, ou
 - Une development build installée et lancée.
 - Un compte de test Supabase valide.
 - Maestro installé localement.
+- Pour GitHub Actions, les secrets suivants doivent exister :
+  - `E2E_TEST_EMAIL`
+  - `E2E_TEST_PASSWORD`
+  - `EXPO_PUBLIC_SUPABASE_URL`
+  - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
 ## Lancer les flows
 

@@ -15,6 +15,8 @@ jobs:
       APP_ID: com.khettal.moodmap.dev
       TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
       TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +31,13 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate E2E configuration
+        run: |
+          test -n "$TEST_EMAIL" || (echo "Missing E2E_TEST_EMAIL secret" && exit 1)
+          test -n "$TEST_PASSWORD" || (echo "Missing E2E_TEST_PASSWORD secret" && exit 1)
+          test -n "$EXPO_PUBLIC_SUPABASE_URL" || (echo "Missing EXPO_PUBLIC_SUPABASE_URL secret" && exit 1)
+          test -n "$EXPO_PUBLIC_SUPABASE_ANON_KEY" || (echo "Missing EXPO_PUBLIC_SUPABASE_ANON_KEY secret" && exit 1)
 
       - name: Generate iOS native project
         working-directory: apps/mobile
