@@ -110,7 +110,7 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
       />
 
       <View style={styles.actions}>
-        <Button label="Annuler" variant="ghost" onPress={onCancel} disabled={loading} />
+        <Button label="Fermer" variant="ghost" onPress={onCancel} disabled={loading} />
         <Button
           label="Enregistrer"
           loading={loading}
