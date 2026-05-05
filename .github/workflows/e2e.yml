@@ -30,20 +30,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install iOS pods
+        working-directory: apps/mobile/ios
+        run: pod install
 
       - name: Build iOS simulator app
         working-directory: apps/mobile
-        run: eas build --platform ios --profile development --local --non-interactive --output build.tar.gz
-
-      - name: Extract app
-        working-directory: apps/mobile
         run: |
-          mkdir -p build
-          tar -xzf build.tar.gz -C build
+          xcodebuild \
+            -workspace ios/MoodMap.xcworkspace \
+            -scheme MoodMap \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Boot simulator
         run: |
@@ -53,7 +55,7 @@ jobs:
 
       - name: Install app on simulator
         working-directory: apps/mobile
-        run: xcrun simctl install "$SIMULATOR_UDID" build/*.app
+        run: xcrun simctl install "$SIMULATOR_UDID" ios/build/Build/Products/Debug-iphonesimulator/MoodMap.app
 
       - name: Install Maestro
         run: curl -Ls "https://get.maestro.mobile.dev" | bash
