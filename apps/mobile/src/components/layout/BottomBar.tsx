@@ -13,6 +13,7 @@ interface BottomTab {
   path: "/" | "/calendar" | "/insights" | "/settings";
   label: string;
   icon: IconName;
+  testID: string;
 }
 
 const TABS: readonly BottomTab[] = [
@@ -20,21 +21,25 @@ const TABS: readonly BottomTab[] = [
     path: "/",
     label: "Aujourd'hui",
     icon: "home-heart",
+    testID: "tab-today",
   },
   {
     path: "/calendar",
     label: "Calendrier",
     icon: "calendar-month-outline",
+    testID: "tab-calendar",
   },
   {
     path: "/insights",
     label: "Tendances",
     icon: "chart-line",
+    testID: "tab-insights",
   },
   {
     path: "/settings",
     label: "Réglages",
     icon: "cog-outline",
+    testID: "tab-settings",
   },
 ];
 
@@ -51,6 +56,8 @@ export function BottomBar() {
             style={styles.tab}
             activeOpacity={0.7}
             onPress={() => router.replace(tab.path)}
+            testID={tab.testID}
+            accessibilityLabel={tab.label}
           >
             <View style={[styles.iconFrame, focused && styles.iconFrameFocused]}>
               <MaterialCommunityIcons

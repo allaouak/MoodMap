@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { authService } from "@/services/auth.service";
-import { registerSchema } from "@/lib/validation";
+import { registerSchema } from "@moodmap/validation";
+import { PasswordStrengthIndicator } from "@/features/auth/PasswordStrengthIndicator";
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -26,8 +27,11 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
+
+  const password = watch("password") ?? "";
 
   const onSubmit = async (values: RegisterForm) => {
     try {
@@ -92,6 +96,7 @@ export default function RegisterScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.displayName?.message}
+                  testID="register-display-name-input"
                 />
               )}
             />
@@ -107,24 +112,29 @@ export default function RegisterScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.email?.message}
+                  testID="register-email-input"
                 />
               )}
             />
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Mot de passe"
-                  placeholder="••••••••"
-                  secureTextEntry
-                  textContentType="newPassword"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.password?.message}
-                />
-              )}
-            />
+            <View className="gap-2">
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Mot de passe"
+                    placeholder="••••••••"
+                    secureTextEntry
+                    textContentType="newPassword"
+                    value={value}
+                    onChangeText={onChange}
+                    error={errors.password?.message}
+                    testID="register-password-input"
+                  />
+                )}
+              />
+              {password.length > 0 && <PasswordStrengthIndicator password={password} />}
+            </View>
             <Controller
               control={control}
               name="confirmPassword"
@@ -137,6 +147,7 @@ export default function RegisterScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.confirmPassword?.message}
+                  testID="register-confirm-password-input"
                 />
               )}
             />
@@ -148,6 +159,7 @@ export default function RegisterScreen() {
               size="lg"
               loading={loading}
               onPress={handleSubmit(onSubmit)}
+              testID="register-submit-button"
             />
             <Text className="text-xs text-center text-gray-400 px-4">
               En créant un compte, tu acceptes nos conditions d'utilisation et

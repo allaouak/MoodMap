@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
+  Platform,
   View,
   Text,
   TouchableOpacity,
@@ -30,7 +31,11 @@ export function AppLockOverlay({ onUnlock }: AppLockOverlayProps) {
   }, []);
 
   return (
-    <View style={styles.overlay}>
+    <View
+      style={styles.overlay}
+      accessibilityViewIsModal={true}
+      {...(Platform.OS === "android" && { importantForAccessibility: "yes" })}
+    >
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
         <AppIcon

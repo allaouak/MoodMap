@@ -1,31 +1,52 @@
 import { useEffect, useRef, useState } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, Platform, View } from "react-native";
 import { Slot, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import "./global.css";
 import { useAuthListener, useAuth } from "@/hooks/useAuth";
 import { useContextualConsentsLoader } from "@/hooks/useContextualConsents";
-import { supabase } from "@/lib/supabase";
+import { supabase, initSentry } from "@moodmap/config";
 import { biometricService } from "@/services/biometric.service";
 import { AppLockOverlay } from "@/components/layout/AppLockOverlay";
-import { initSentry } from "@/lib/sentry";
+import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 
 // Initialisation au plus tôt pour capturer les crashs dès le démarrage
 initSentry();
 
 SplashScreen.preventAutoHideAsync();
 
+const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: "tanstack-query",
+  serialize: (data) => JSON.stringify(data),
+  deserialize: (data) => JSON.parse(data),
+});
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      networkMode: 'online', // Optimisation offline
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      retry: 1,
+      networkMode: 'online',
     },
   },
 });
+
+// Configuration de persistance (simplifiée pour l'instant)
+// La persistance sera gérée au niveau des hooks individuellement
 
 export default function RootLayout() {
   useAuthListener();
@@ -140,10 +161,21 @@ export default function RootLayout() {
   }, [session, isLoading, isRecovery, lockChecked]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <StatusBar style={isLocked ? "light" : "auto"} />
-      <Slot />
-      {isLocked && <AppLockOverlay onUnlock={() => setIsLocked(false)} />}
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style={isLocked ? "light" : "auto"} />
+        <View
+          style={{ flex: 1 }}
+          pointerEvents={isLocked ? "none" : "box-none"}
+          accessibilityElementsHidden={isLocked}
+          {...(Platform.OS === "android" && {
+            importantForAccessibility: isLocked ? "no-hide-descendants" : "auto",
+          })}
+        >
+          <Slot />
+        </View>
+        {isLocked && <AppLockOverlay onUnlock={() => setIsLocked(false)} />}
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

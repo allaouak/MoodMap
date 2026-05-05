@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8F4FF",
+      "backgroundColor": "#1E0857",
       "imageWidth": 148
     },
     "ios": {
@@ -21,7 +21,9 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal.",
         "NSHealthShareUsageDescription": "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
-        "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé."
+        "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé.",
+        "NSLocalNetworkUsageDescription": "MoodMap accède au réseau local pour se connecter au serveur de développement Expo.",
+        "NSBonjourServices": ["_expo._tcp", "_http._tcp"]
       },
       "entitlements": {
         "com.apple.developer.healthkit": true
@@ -30,7 +32,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#F8F4FF"
+        "backgroundColor": "#1E0857"
       },
       "package": "com.moodmap.app",
       "permissions": [
@@ -97,7 +99,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 148,
           "resizeMode": "contain",
-          "backgroundColor": "#F8F4FF"
+          "backgroundColor": "#1E0857"
         }
       ],
       [

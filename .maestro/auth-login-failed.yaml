@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+---
+- clearState
+- launchApp
+- assertVisible: "MoodMap"
+- tapOn:
+    id: "welcome-login-button"
+- assertVisible: "Bon retour"
+- tapOn:
+    id: "login-email-input"
+- inputText: "${TEST_EMAIL}"
+- tapOn:
+    id: "login-password-input"
+- inputText: "mauvais_mot_de_passe_123"
+- hideKeyboard
+- tapOn:
+    id: "login-submit-button"
+- assertNotVisible:
+    id: "tab-today"

@@ -1,0 +1,19 @@
+{
+  "name": "@moodmap/config",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sentry/react-native": "^7.2.0",
+    "@supabase/supabase-js": "^2.49.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

@@ -86,6 +86,8 @@ export function TodayCard({ entry, contextualEntry, onEdit }: TodayCardProps) {
           <TouchableOpacity
             onPress={onEdit}
             className="bg-gray-100 px-3 py-1.5 rounded-xl"
+            testID="today-open-check-in"
+            accessibilityLabel="Modifier mon ressenti"
           >
             <Text className="text-sm text-gray-600 font-medium">Modifier</Text>
           </TouchableOpacity>

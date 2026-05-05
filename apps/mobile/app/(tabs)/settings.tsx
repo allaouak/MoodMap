@@ -30,6 +30,7 @@ import { activityService } from "@/services/activity.service";
 import { dataExportService } from "@/services/data-export.service";
 import type { ContextualModule } from "@/types/contextual";
 import { AppIcon } from "@/components/ui/AppIcon";
+import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
 import { isExpoGo } from "@/utils/runtime";
 
 const TIME_PRESETS = [
@@ -408,6 +409,17 @@ export default function SettingsScreen() {
     }
   };
 
+  const handlePasswordChangeSuccess = () => {
+    Alert.alert(
+      "Mot de passe mis à jour",
+      "Ton mot de passe a été changé avec succès."
+    );
+  };
+
+  const handlePasswordChangeCancel = () => {
+    // Ne rien faire, l'utilisateur a annulé
+  };
+
   const handleSignOut = () => {
     Alert.alert(
       "Se déconnecter",
@@ -565,6 +577,14 @@ export default function SettingsScreen() {
               Face ID ou Touch ID non disponible sur cet appareil.
             </Text>
           )}
+          
+          <View style={styles.separator} />
+          
+          <ChangePasswordForm 
+            userEmail={session?.user?.email ?? ""} 
+            onSuccess={handlePasswordChangeSuccess} 
+            onCancel={handlePasswordChangeCancel} 
+          />
         </View>
 
         {/* Mon quotidien */}
@@ -890,6 +910,12 @@ const styles = StyleSheet.create({
   },
   deleteBtnLabel: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
   deleteBtnSub: { fontSize: 11, color: "#9CA3AF" },
+
+  separator: {
+    height: 1,
+    backgroundColor: "#F3F4F6",
+    marginVertical: 16,
+  },
 
   modalOverlay: {
     flex: 1,

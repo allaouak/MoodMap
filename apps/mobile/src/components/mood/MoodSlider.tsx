@@ -10,6 +10,7 @@ interface MoodSliderProps {
   onChange: (value: MoodLevel) => void;
   emoji?: boolean;
   anchors?: readonly [string, string];
+  testIDPrefix?: string;
 }
 
 const LEVELS: MoodLevel[] = [1, 2, 3, 4, 5];
@@ -20,6 +21,7 @@ export function MoodSlider({
   onChange,
   emoji = false,
   anchors,
+  testIDPrefix,
 }: MoodSliderProps) {
   const handlePress = (level: MoodLevel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -40,6 +42,8 @@ export function MoodSlider({
               key={level}
               onPress={() => handlePress(level)}
               activeOpacity={0.7}
+              testID={testIDPrefix ? `${testIDPrefix}-${level}` : undefined}
+              accessibilityLabel={`${label} ${level}`}
               className={`flex-1 items-center justify-center py-3 rounded-2xl border-2 ${
                 isSelected ? "border-transparent" : "border-gray-100 bg-gray-50"
               }`}

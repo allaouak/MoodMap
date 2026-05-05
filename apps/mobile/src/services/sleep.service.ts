@@ -25,7 +25,7 @@ interface HealthKitSleepModule {
   ) => Promise<readonly HealthKitCategorySample[]>;
 }
 
-function sleepQualityFromMinutes(min: number): 1 | 2 | 3 | 4 | 5 {
+export function sleepQualityFromMinutes(min: number): 1 | 2 | 3 | 4 | 5 {
   if (min >= 450) return 5;
   if (min >= 360) return 4;
   if (min >= 300) return 3;
@@ -33,16 +33,16 @@ function sleepQualityFromMinutes(min: number): 1 | 2 | 3 | 4 | 5 {
   return 1;
 }
 
-function toHHMM(date: Date): string {
+export function toHHMM(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-function toDate(value: Date | string): Date {
+export function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
 // Fenêtre de recherche du sommeil : veille 18h → jour J 12h
-function sleepWindow(dateISO: string): { start: Date; end: Date } {
+export function sleepWindow(dateISO: string): { start: Date; end: Date } {
   const target = new Date(dateISO + 'T00:00:00');
   const start = new Date(target);
   start.setDate(start.getDate() - 1);

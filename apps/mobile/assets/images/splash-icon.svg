@@ -1,0 +1,41 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Splash icon — éléments blancs sur fond transparent.
+    Le fond violet (#1E0857) est fourni par iOS via SplashScreenBackground.
+    Exporter en PNG : 1x=341px · 2x=682px · 3x=1024px
+  -->
+  <defs>
+    <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="30" result="blur"/>
+    </filter>
+  </defs>
+
+  <!-- Vague fantôme (profondeur) -->
+  <path d="M -60 658 C 210 658 375 358 512 358 C 649 358 814 658 1084 658"
+        stroke="rgba(255,255,255,0.12)"
+        stroke-width="108"
+        fill="none"
+        stroke-linecap="round"/>
+
+  <!-- Vague principale -->
+  <path d="M -60 642 C 210 642 375 370 512 370 C 649 370 814 642 1084 642"
+        stroke="rgba(255,255,255,0.92)"
+        stroke-width="62"
+        fill="none"
+        stroke-linecap="round"/>
+
+  <!-- Points de données (check-ins passés) -->
+  <circle cx="158" cy="614" r="18" fill="rgba(255,255,255,0.52)"/>
+  <circle cx="318" cy="507" r="18" fill="rgba(255,255,255,0.52)"/>
+  <circle cx="706" cy="507" r="18" fill="rgba(255,255,255,0.52)"/>
+  <circle cx="866" cy="614" r="18" fill="rgba(255,255,255,0.52)"/>
+
+  <!-- Halo glow derrière le point central -->
+  <circle cx="512" cy="370" r="130" fill="white" filter="url(#glow)" opacity="0.55"/>
+
+  <!-- Point central (moment présent) -->
+  <circle cx="512" cy="370" r="66" fill="white"/>
+
+  <!-- Reflet spéculaire -->
+  <circle cx="492" cy="350" r="22" fill="rgba(255,255,255,0.48)"/>
+</svg>

@@ -1,0 +1,25 @@
+appId: ${APP_ID}
+---
+- clearState
+- launchApp
+- assertVisible: "MoodMap"
+- tapOn:
+    id: "welcome-register-button"
+- assertVisible: "Créer un compte"
+- tapOn:
+    id: "register-display-name-input"
+- inputText: "${TEST_DISPLAY_NAME}"
+- tapOn:
+    id: "register-email-input"
+- inputText: "${TEST_REGISTER_EMAIL}"
+- tapOn:
+    id: "register-password-input"
+- inputText: "${TEST_REGISTER_PASSWORD}"
+- tapOn:
+    id: "register-confirm-password-input"
+- inputText: "${TEST_REGISTER_PASSWORD}"
+- hideKeyboard
+- tapOn:
+    id: "register-submit-button"
+- assertVisible:
+    id: "tab-today"

@@ -26,6 +26,30 @@ pnpm --filter mobile exec eas build --profile development --platform ios
 pnpm --filter mobile exec eas build --profile development --platform android
 ```
 
+## Maestro E2E
+
+Les flows Maestro sont dans `.maestro/` et ciblent d'abord les flux critiques :
+
+- connexion ;
+- ouverture du check-in ;
+- navigation calendrier.
+
+Exemple iOS :
+
+```bash
+maestro test -e APP_ID=com.khettal.moodmap.dev -e TEST_EMAIL=toi@example.com -e TEST_PASSWORD=motdepasse .maestro/auth-login.yaml
+maestro test -e APP_ID=com.khettal.moodmap.dev .maestro/check-in-smoke.yaml
+maestro test -e APP_ID=com.khettal.moodmap.dev .maestro/calendar-navigation.yaml
+```
+
+Exemple Android :
+
+```bash
+maestro test -e APP_ID=com.moodmap.app -e TEST_EMAIL=toi@example.com -e TEST_PASSWORD=motdepasse .maestro/auth-login.yaml
+maestro test -e APP_ID=com.moodmap.app .maestro/check-in-smoke.yaml
+maestro test -e APP_ID=com.moodmap.app .maestro/calendar-navigation.yaml
+```
+
 ## iOS HealthKit
 
 À vérifier sur appareil réel :

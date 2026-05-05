@@ -290,6 +290,8 @@ export default function TodayScreen() {
               style={styles.primaryButton}
               activeOpacity={0.8}
               onPress={() => setShowCheckIn(true)}
+              testID="today-open-check-in"
+              accessibilityLabel="Comment je me sens ?"
             >
               <Text style={styles.primaryButtonText}>
                 Comment je me sens ?

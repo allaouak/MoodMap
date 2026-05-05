@@ -1,0 +1,60 @@
+name: EAS Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Build profile"
+        required: true
+        default: "preview"
+        type: choice
+        options:
+          - preview
+          - production
+      platform:
+        description: "Platform"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+
+jobs:
+  build:
+    name: EAS Build (${{ github.event.inputs.profile || 'preview' }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.33.2"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build (tag push → preview)
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: apps/mobile
+        run: eas build --platform all --profile preview --non-interactive
+
+      - name: Build (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: apps/mobile
+        run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile }} --non-interactive

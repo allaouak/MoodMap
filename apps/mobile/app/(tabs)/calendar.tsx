@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Platform,
   View,
   Text,
   TouchableOpacity,
@@ -243,7 +244,7 @@ export default function CalendarScreen() {
                       { backgroundColor: MOOD_COLOR[selectedEntry.mood] + "20" },
                     ]}
                     accessibilityElementsHidden
-                    importantForAccessibility="no"
+                    {...(Platform.OS === "android" && { importantForAccessibility: "no" })}
                   >
                     <MoodFaceIcon level={selectedEntry.mood} size={34} />
                   </View>

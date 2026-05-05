@@ -41,12 +41,14 @@ export default function WelcomeScreen() {
             label="Commencer"
             size="lg"
             onPress={() => router.push("/(auth)/register")}
+            testID="welcome-register-button"
           />
           <Button
             label="J'ai déjà un compte"
             variant="ghost"
             size="lg"
             onPress={() => router.push("/(auth)/login")}
+            testID="welcome-login-button"
           />
         </View>
       </View>

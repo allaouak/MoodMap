@@ -390,7 +390,7 @@ export function MoodCheckIn({
   const customTags = selectedTags.filter((t) => !SUGGESTED_TAGS.includes(t));
 
   return (
-    <View className="bg-white rounded-3xl p-5 gap-5">
+    <View className="bg-white rounded-3xl p-5 gap-5" testID="check-in-form">
       {/* Indicateur de progression */}
       <View className="flex-row gap-1.5">
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -413,7 +413,13 @@ export function MoodCheckIn({
             control={control}
             name="mood"
             render={({ field: { value, onChange } }) => (
-              <MoodSlider label="Humeur" value={value as MoodLevel} onChange={onChange} emoji />
+              <MoodSlider
+                label="Humeur"
+                value={value as MoodLevel}
+                onChange={onChange}
+                emoji
+                testIDPrefix="check-in-mood"
+              />
             )}
           />
           <Controller
@@ -425,6 +431,7 @@ export function MoodCheckIn({
                 value={value as EnergyLevel}
                 onChange={onChange}
                 anchors={["Épuisé", "Débordant"]}
+                testIDPrefix="check-in-energy"
               />
             )}
           />
@@ -437,6 +444,7 @@ export function MoodCheckIn({
                 value={value as StressLevel}
                 onChange={onChange}
                 anchors={["Zen", "Débordé"]}
+                testIDPrefix="check-in-stress"
               />
             )}
           />
@@ -458,6 +466,7 @@ export function MoodCheckIn({
                   <TouchableOpacity
                     key={tag}
                     onPress={() => toggleTag(tag)}
+                    testID={`check-in-tag-${tag}`}
                     className={`px-3 py-1.5 rounded-full border ${
                       selected ? "bg-brand-500 border-brand-500" : "bg-gray-50 border-gray-200"
                     }`}
@@ -495,6 +504,7 @@ export function MoodCheckIn({
                 value={customTagInput}
                 onChangeText={setCustomTagInput}
                 onSubmitEditing={addCustomTag}
+                testID="check-in-custom-tag-input"
                 returnKeyType="done"
                 maxLength={30}
                 autoCapitalize="none"
@@ -503,6 +513,7 @@ export function MoodCheckIn({
               {customTagInput.trim().length > 0 && (
                 <TouchableOpacity
                   onPress={addCustomTag}
+                  testID="check-in-add-custom-tag"
                   className="w-8 h-8 bg-brand-500 rounded-full items-center justify-center"
                 >
                   <Text className="text-white text-lg font-bold leading-none">+</Text>
@@ -528,6 +539,7 @@ export function MoodCheckIn({
                   textAlignVertical="top"
                   value={value}
                   onChangeText={onChange}
+                  testID="check-in-note-input"
                   maxLength={500}
                 />
                 <Text className="text-xs text-gray-400 text-right">
@@ -699,6 +711,7 @@ export function MoodCheckIn({
                     keyboardType="decimal-pad"
                     value={screenTimeInput}
                     onChangeText={setScreenTimeInput}
+                    testID="check-in-screen-time-input"
                     maxLength={4}
                   />
                 </View>
@@ -724,12 +737,14 @@ export function MoodCheckIn({
           label={isLastStep ? (existingEntry ? "Mettre à jour" : "Enregistrer") : "Suivant"}
           loading={isLastStep ? loading : false}
           onPress={isLastStep ? handleSubmit(onSubmit) : () => setStep((s) => (s + 1) as Step)}
+          testID={isLastStep ? "check-in-submit" : "check-in-next"}
         />
         {(step > 0 || onCancel) && (
           <Button
             label={step === 0 ? "Annuler" : "Retour"}
             variant="ghost"
             onPress={step === 0 ? onCancel : () => setStep((s) => (s - 1) as Step)}
+            testID={step === 0 ? "check-in-cancel" : "check-in-back"}
           />
         )}
       </View>

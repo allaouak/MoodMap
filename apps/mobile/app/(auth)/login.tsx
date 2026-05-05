@@ -76,6 +76,7 @@ export default function LoginScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.email?.message}
+                  testID="login-email-input"
                 />
               )}
             />
@@ -91,6 +92,7 @@ export default function LoginScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.password?.message}
+                  testID="login-password-input"
                 />
               )}
             />
@@ -102,8 +104,10 @@ export default function LoginScreen() {
               size="lg"
               loading={loading}
               onPress={handleSubmit(onSubmit)}
+              testID="login-submit-button"
             />
             <Button
+              testID="login-forgot-password-button"
               label="Mot de passe oublié ?"
               variant="ghost"
               onPress={() => router.push("/(auth)/forgot-password")}

@@ -20,14 +20,14 @@ interface HealthKitActivityModule {
   ) => Promise<HealthKitQuantityStats>;
 }
 
-function activityLevelFromSteps(steps: number): ActivityLevel {
+export function activityLevelFromSteps(steps: number): ActivityLevel {
   if (steps >= 10000) return 'active';
   if (steps >= 7000) return 'moderate';
   if (steps >= 3000) return 'light';
   return 'sedentary';
 }
 
-function dayWindow(dateISO: string): { start: Date; end: Date } {
+export function dayWindow(dateISO: string): { start: Date; end: Date } {
   const start = new Date(dateISO + 'T00:00:00');
   const end = new Date(dateISO + 'T23:59:59');
   return { start, end };
