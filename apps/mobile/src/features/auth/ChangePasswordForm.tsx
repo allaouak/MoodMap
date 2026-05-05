@@ -67,6 +67,7 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
             value={value}
             onChangeText={onChange}
             error={errors.currentPassword?.message}
+            testID="change-password-current-input"
           />
         )}
       />
@@ -84,6 +85,7 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
               value={value}
               onChangeText={onChange}
               error={errors.newPassword?.message}
+              testID="change-password-new-input"
             />
           )}
         />
@@ -102,13 +104,19 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
             value={value}
             onChangeText={onChange}
             error={errors.confirmNewPassword?.message}
+            testID="change-password-confirm-input"
           />
         )}
       />
 
       <View style={styles.actions}>
         <Button label="Annuler" variant="ghost" onPress={onCancel} disabled={loading} />
-        <Button label="Enregistrer" loading={loading} onPress={handleSubmit(onSubmit)} />
+        <Button
+          label="Enregistrer"
+          loading={loading}
+          onPress={handleSubmit(onSubmit)}
+          testID="change-password-submit-button"
+        />
       </View>
     </View>
   );

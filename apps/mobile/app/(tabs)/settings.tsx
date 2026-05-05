@@ -115,6 +115,7 @@ export default function SettingsScreen() {
   const [editNameValue, setEditNameValue] = useState("");
   const [editNameLoading, setEditNameLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [passwordFormVisible, setPasswordFormVisible] = useState(false);
   const [customHour, setCustomHour] = useState("");
   const [customMin, setCustomMin] = useState("");
   const nativeHealthUnavailable = isExpoGo();
@@ -410,14 +411,11 @@ export default function SettingsScreen() {
   };
 
   const handlePasswordChangeSuccess = () => {
-    Alert.alert(
-      "Mot de passe mis à jour",
-      "Ton mot de passe a été changé avec succès."
-    );
+    setPasswordFormVisible(false);
   };
 
   const handlePasswordChangeCancel = () => {
-    // Ne rien faire, l'utilisateur a annulé
+    setPasswordFormVisible(false);
   };
 
   const handleSignOut = () => {
@@ -580,12 +578,35 @@ export default function SettingsScreen() {
           )}
           
           <View style={styles.separator} />
-          
-          <ChangePasswordForm 
-            userEmail={session?.user?.email ?? ""} 
-            onSuccess={handlePasswordChangeSuccess} 
-            onCancel={handlePasswordChangeCancel} 
-          />
+
+          <TouchableOpacity
+            style={styles.passwordToggleRow}
+            onPress={() => setPasswordFormVisible((v) => !v)}
+            activeOpacity={0.75}
+            testID="change-password-toggle"
+            accessibilityRole="button"
+            accessibilityState={{ expanded: passwordFormVisible }}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowLabel}>Modifier le mot de passe</Text>
+              <Text style={styles.rowSub}>
+                Mets à jour l'accès à ton compte
+              </Text>
+            </View>
+            <Text style={styles.chevron} accessibilityElementsHidden>
+              {passwordFormVisible ? "⌃" : "›"}
+            </Text>
+          </TouchableOpacity>
+
+          {passwordFormVisible && (
+            <View style={styles.passwordFormBlock}>
+              <ChangePasswordForm
+                userEmail={session?.user?.email ?? ""}
+                onSuccess={handlePasswordChangeSuccess}
+                onCancel={handlePasswordChangeCancel}
+              />
+            </View>
+          )}
         </View>
 
         {/* Mon quotidien */}
@@ -916,6 +937,23 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#F3F4F6",
     marginVertical: 16,
+  },
+  passwordToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 2,
+  },
+  chevron: {
+    fontSize: 28,
+    lineHeight: 30,
+    color: "#9CA3AF",
+    fontWeight: "600",
+  },
+  passwordFormBlock: {
+    paddingTop: 8,
+    gap: 12,
   },
 
   modalOverlay: {
