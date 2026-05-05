@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
-import { loginSchema } from "@/lib/validation";
+import { loginSchema } from "@moodmap/validation";
 
 type LoginForm = z.infer<typeof loginSchema>;
 

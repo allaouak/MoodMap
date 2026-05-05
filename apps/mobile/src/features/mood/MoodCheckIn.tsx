@@ -21,7 +21,7 @@ import { MoodEntry, MoodLevel, EnergyLevel, StressLevel } from "@/types";
 import type { ContextualEntry } from "@/types/contextual";
 import { todayISOInTimezone } from "@/utils/date";
 import { formatSleepDuration } from "@/utils/contextual";
-import { checkInSchema } from "@/lib/validation";
+import { checkInSchema } from "@moodmap/validation";
 
 const MAX_TAGS = 10;
 

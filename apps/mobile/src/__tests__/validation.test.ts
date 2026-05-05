@@ -4,7 +4,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   checkInSchema,
-} from "../lib/validation";
+} from "@moodmap/validation";
 
 // ─── loginSchema ────────────────────────────────────────────────────────────
 

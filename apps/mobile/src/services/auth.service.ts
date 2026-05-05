@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { Profile } from "@/types";
-import { updateProfileSchema } from "@/lib/validation";
+import { updateProfileSchema } from "@moodmap/validation";
 
 export const authService = {
   async signUp(

@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
-import { forgotPasswordSchema } from "@/lib/validation";
+import { forgotPasswordSchema } from "@moodmap/validation";
 
 type Form = z.infer<typeof forgotPasswordSchema>;
 
