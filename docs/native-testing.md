@@ -26,6 +26,8 @@ pnpm --filter mobile exec eas build --profile development --platform ios
 pnpm --filter mobile exec eas build --profile development --platform android
 ```
 
+La checklist manuelle iOS complete est dans `docs/ios-manual-qa.md`.
+
 ## Maestro E2E
 
 Les flows Maestro sont dans `.maestro/` et ciblent d'abord les flux critiques :
