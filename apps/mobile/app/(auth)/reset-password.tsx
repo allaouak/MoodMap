@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
-import { resetPasswordSchema } from "@/lib/validation";
+import { resetPasswordSchema } from "@moodmap/validation";
+import { PasswordStrengthIndicator } from "@/features/auth/PasswordStrengthIndicator";
 
 type Form = z.infer<typeof resetPasswordSchema>;
 
@@ -27,8 +28,11 @@ export default function ResetPasswordScreen() {
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<Form>({ resolver: zodResolver(resetPasswordSchema) });
+
+  const password = watch("password") ?? "";
 
   const onSubmit = async (values: Form) => {
     try {
@@ -71,21 +75,24 @@ export default function ResetPasswordScreen() {
           </View>
 
           <View className="gap-4">
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Nouveau mot de passe"
-                  placeholder="••••••••"
-                  secureTextEntry
-                  textContentType="newPassword"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.password?.message}
-                />
-              )}
-            />
+            <View className="gap-2">
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Nouveau mot de passe"
+                    placeholder="••••••••"
+                    secureTextEntry
+                    textContentType="newPassword"
+                    value={value}
+                    onChangeText={onChange}
+                    error={errors.password?.message}
+                  />
+                )}
+              />
+              {password.length > 0 && <PasswordStrengthIndicator password={password} />}
+            </View>
             <Controller
               control={control}
               name="confirmPassword"

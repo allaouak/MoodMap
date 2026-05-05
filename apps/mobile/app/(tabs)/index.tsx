@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, type ComponentProps } from "react";
 import {
   View,
   Text,
@@ -7,43 +7,158 @@ import {
   ActivityIndicator,
   StyleSheet,
   Modal,
+  RefreshControl,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/auth.store";
-import { useMoodStore } from "@/stores/mood.store";
+import { useContextualStore } from "@/stores/contextual.store";
 import { moodService } from "@/services/mood.service";
 import { authService } from "@/services/auth.service";
+import { contextualEntryService } from "@/services/contextual-entry.service";
 import { TodayCard } from "@/features/mood/TodayCard";
 import { MoodCheckIn } from "@/features/mood/MoodCheckIn";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { MoodEntry } from "@/types";
+import { todayISOInTimezone } from "@/utils/date";
+import { buildDailyContextSignal, type DailyContextSignal } from "@/utils/contextual";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+const SIGNAL_STYLE: Record<
+  DailyContextSignal["module"],
+  { icon: ComponentProps<typeof AppIcon>["name"]; color: string; backgroundColor: string }
+> = {
+  sleep: { icon: "moon-waning-crescent", color: "#6366F1", backgroundColor: "#EEF2FF" },
+  activity: { icon: "shoe-sneaker", color: "#059669", backgroundColor: "#ECFDF5" },
+  screen_time: { icon: "cellphone", color: "#0284C7", backgroundColor: "#E0F2FE" },
+};
+
+function DailySignalCard({
+  signal,
+  onPress,
+}: {
+  signal: DailyContextSignal;
+  onPress: () => void;
+}) {
+  const signalStyle = SIGNAL_STYLE[signal.module];
+
+  return (
+    <View style={styles.signalCard}>
+      <View style={styles.signalHeader}>
+        <AppIcon
+          name={signalStyle.icon}
+          color={signalStyle.color}
+          backgroundColor={signalStyle.backgroundColor}
+          size={18}
+          frameSize={36}
+        />
+        <Text style={styles.signalTitle}>Signal du jour</Text>
+      </View>
+      <Text style={styles.signalText}>{signal.text}</Text>
+      <TouchableOpacity style={styles.signalAction} onPress={onPress} activeOpacity={0.75}>
+        <Text style={styles.signalActionText}>Voir les tendances</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function ContextNudgeCard({
+  hasEnabledContext,
+  onSettingsPress,
+  onEditPress,
+}: {
+  hasEnabledContext: boolean;
+  onSettingsPress: () => void;
+  onEditPress: () => void;
+}) {
+  return (
+    <View style={styles.nudgeCard}>
+      <View style={styles.signalHeader}>
+        <AppIcon
+          name={hasEnabledContext ? "sync" : "database-plus-outline"}
+          color="#6D28D9"
+          backgroundColor="#F3E8FF"
+          size={18}
+          frameSize={36}
+        />
+        <Text style={styles.signalTitle}>
+          {hasEnabledContext ? "Données en attente" : "Enrichir ton journal"}
+        </Text>
+      </View>
+      <Text style={styles.signalText}>
+        {hasEnabledContext
+          ? "Tes modules contextuels sont prêts. Ajoute ou resynchronise les données du jour pour obtenir un signal plus utile."
+          : "Active le sommeil, l'activité ou le temps d'écran pour mieux comprendre ce qui accompagne ton ressenti."}
+      </Text>
+      <View style={styles.nudgeActions}>
+        <TouchableOpacity
+          style={styles.signalAction}
+          onPress={hasEnabledContext ? onEditPress : onSettingsPress}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.signalActionText}>
+            {hasEnabledContext ? "Compléter" : "Configurer"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function TodayScreen() {
+  const router = useRouter();
   const { user, profile, profileError, setProfile, setProfileError } = useAuthStore();
-  const { todayEntry, setTodayEntry, isLoading, setLoading } = useMoodStore();
+  const consents = useContextualStore((state) => state.consents);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const queryClient = useQueryClient();
 
   const timezone = profile?.timezone ?? "UTC";
+  const userId = user?.id;
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+  const { data: todayEntry, isLoading: isLoadingMood, error: moodError, refetch: refetchMood } = useQuery({
+    queryKey: ['todayMoodEntry', userId, timezone],
+    queryFn: async () => {
+      if (!userId) return null;
+      return moodService.getTodayEntry(userId, timezone);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: todayContextualEntry, isLoading: isLoadingContextual, error: contextualError, refetch: refetchContextual } = useQuery({
+    queryKey: ['todayContextualEntry', userId, timezone],
+    queryFn: async () => {
+      if (!userId) return null;
+      const today = todayISOInTimezone(timezone);
+      return contextualEntryService.getForDate(userId, today);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isLoading = isLoadingMood || isLoadingContextual;
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const entry = await moodService.getTodayEntry(user.id, timezone);
-      setTodayEntry(entry);
+      await Promise.all([refetchMood(), refetchContextual()]);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
-  }, [user, timezone, setTodayEntry, setLoading]);
+  }, [refetchMood, refetchContextual]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const handleSaved = (entry: MoodEntry) => {
-    setTodayEntry(entry);
+  const handleSaved = async (_entry: MoodEntry) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['todayMoodEntry', userId, timezone] }),
+      queryClient.invalidateQueries({ queryKey: ['todayContextualEntry', userId, timezone] }),
+      queryClient.invalidateQueries({ queryKey: ['moodEntries', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['contextualEntries', userId] }),
+    ]);
     setShowCheckIn(false);
   };
 
@@ -53,6 +168,7 @@ export default function TodayScreen() {
     try {
       const p = await authService.getProfile(user.id);
       setProfile(p);
+      setProfileError(false);
     } catch {
       setProfileError(true);
     } finally {
@@ -62,19 +178,34 @@ export default function TodayScreen() {
 
   const dateLabel = format(new Date(), "EEEE d MMMM", { locale: fr });
   const firstName = profile?.display_name?.split(" ")[0] ?? "toi";
+  const dailySignal = todayEntry && todayContextualEntry
+    ? buildDailyContextSignal(todayEntry, todayContextualEntry)
+    : null;
+  const hasEnabledContext = Object.values(consents).some(Boolean);
+  const showInitialLoader = isLoading && !todayEntry;
 
-  if (profileError) {
+  if (profileError || moodError || contextualError) {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.errorState}>
-          <Text style={styles.errorEmoji}>⚠️</Text>
-          <Text style={styles.errorTitle}>Profil indisponible</Text>
+          <AppIcon
+            name="alert-circle-outline"
+            color="#EF4444"
+            backgroundColor="#FEE2E2"
+            size={30}
+            frameSize={58}
+          />
+          <Text style={styles.errorTitle}>Erreur de chargement</Text>
           <Text style={styles.errorSubtitle}>
-            Impossible de charger ton profil. Vérifie ta connexion.
+            Impossible de charger les données. Vérifie ta connexion.
           </Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={handleRetryProfile}
+            onPress={() => {
+              refetchMood();
+              refetchContextual();
+              handleRetryProfile();
+            }}
             activeOpacity={0.8}
             disabled={retrying}
           >
@@ -95,15 +226,26 @@ export default function TodayScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#6D28D9"
+            colors={["#6D28D9"]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.dateText}>{dateLabel}</Text>
-          <Text style={styles.greeting}>Bonjour, {firstName} 🌿</Text>
+          <View style={styles.greetingRow}>
+            <Text style={styles.greeting}>Bonjour, {firstName}</Text>
+            <AppIcon name="sprout-outline" size={19} frameSize={34} />
+          </View>
         </View>
 
         {/* Contenu principal */}
-        {isLoading ? (
+        {showInitialLoader ? (
           <View style={styles.center}>
             <ActivityIndicator color="#6D28D9" />
           </View>
@@ -112,12 +254,32 @@ export default function TodayScreen() {
             <Text style={styles.sectionTitle}>Ton ressenti du jour</Text>
             <TodayCard
               entry={todayEntry}
+              contextualEntry={todayContextualEntry ?? null}
               onEdit={() => setShowCheckIn(true)}
             />
+            {dailySignal && (
+              <DailySignalCard
+                signal={dailySignal}
+                onPress={() => router.push("/(tabs)/insights")}
+              />
+            )}
+            {!dailySignal && (
+              <ContextNudgeCard
+                hasEnabledContext={hasEnabledContext}
+                onSettingsPress={() => router.push("/(tabs)/settings")}
+                onEditPress={() => setShowCheckIn(true)}
+              />
+            )}
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🌱</Text>
+            <AppIcon
+              name="sprout-outline"
+              color="#6D28D9"
+              backgroundColor="#F3E8FF"
+              size={32}
+              frameSize={64}
+            />
             <Text style={styles.emptyTitle}>
               Pas encore de check-in aujourd'hui
             </Text>
@@ -128,6 +290,8 @@ export default function TodayScreen() {
               style={styles.primaryButton}
               activeOpacity={0.8}
               onPress={() => setShowCheckIn(true)}
+              testID="today-open-check-in"
+              accessibilityLabel="Comment je me sens ?"
             >
               <Text style={styles.primaryButtonText}>
                 Comment je me sens ?
@@ -136,7 +300,7 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {todayEntry && !isLoading && (
+        {todayEntry && !showInitialLoader && (
           <View style={styles.footer}>
             <Text style={styles.footerHint}>
               Tu peux mettre à jour ton ressenti jusqu'à minuit.
@@ -162,7 +326,7 @@ export default function TodayScreen() {
               <MoodCheckIn
                 userId={user.id}
                 timezone={timezone}
-                existingEntry={todayEntry}
+                existingEntry={todayEntry ?? null}
                 onSaved={handleSaved}
                 onCancel={() => setShowCheckIn(false)}
               />
@@ -179,11 +343,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, gap: 24 },
   header: { gap: 4 },
-  dateText: { fontSize: 13, color: "#9CA3AF", textTransform: "capitalize" },
-  greeting: { fontSize: 26, fontWeight: "700", color: "#1F2937" },
+  dateText: { fontSize: 13, lineHeight: 19, color: "#9CA3AF", textTransform: "capitalize" },
+  greetingRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  greeting: { fontSize: 28, lineHeight: 34, fontWeight: "700", color: "#1F2937" },
   section: { gap: 12 },
   sectionTitle: {
     fontSize: 13,
+    lineHeight: 18,
     fontWeight: "600",
     color: "#6B7280",
     textTransform: "uppercase",
@@ -191,7 +357,6 @@ const styles = StyleSheet.create({
   },
   center: { paddingVertical: 60, alignItems: "center" },
   emptyState: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  emptyEmoji: { fontSize: 56 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
   emptySubtitle: {
     fontSize: 14,
@@ -210,11 +375,36 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
   footer: { alignItems: "center" },
   footerHint: { fontSize: 12, color: "#9CA3AF", textAlign: "center" },
+  signalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+  },
+  nudgeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  signalHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  signalTitle: { fontSize: 14, fontWeight: "700", color: "#1F2937" },
+  signalText: { fontSize: 13, color: "#4B5563", lineHeight: 20 },
+  signalAction: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F3E8FF",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  nudgeActions: { flexDirection: "row", alignItems: "center" },
+  signalActionText: { fontSize: 12, fontWeight: "700", color: "#6D28D9" },
   modalSafe: { flex: 1, backgroundColor: "#F8F4FF" },
   modalContent: { padding: 20, paddingBottom: 40 },
 
   errorState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 },
-  errorEmoji: { fontSize: 48 },
   errorTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", textAlign: "center" },
   errorSubtitle: {
     fontSize: 14,

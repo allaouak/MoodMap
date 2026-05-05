@@ -66,7 +66,7 @@ export default function ForgotPasswordScreen() {
           </View>
 
           {sent ? (
-            <View className="bg-brand-50 rounded-3xl p-6 gap-3 items-center">
+            <View testID="forgot-password-sent" className="bg-brand-50 rounded-3xl p-6 gap-3 items-center">
               <Text className="text-4xl">📬</Text>
               <Text className="text-lg font-bold text-gray-900 text-center">
                 Vérifie ta boîte mail
@@ -76,6 +76,7 @@ export default function ForgotPasswordScreen() {
                 quelques minutes. Pense à vérifier tes spams.
               </Text>
               <TouchableOpacity
+                testID="forgot-password-back-to-login"
                 onPress={() => router.replace("/(auth)/login")}
                 className="mt-2"
               >
@@ -91,6 +92,7 @@ export default function ForgotPasswordScreen() {
                 name="email"
                 render={({ field: { onChange, value } }) => (
                   <Input
+                    testID="forgot-password-email-input"
                     label="Email"
                     placeholder="toi@exemple.com"
                     keyboardType="email-address"
@@ -102,6 +104,7 @@ export default function ForgotPasswordScreen() {
                 )}
               />
               <Button
+                testID="forgot-password-submit-button"
                 label="Envoyer le lien"
                 size="lg"
                 loading={loading}

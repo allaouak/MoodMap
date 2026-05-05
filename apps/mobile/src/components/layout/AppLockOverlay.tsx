@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
+  Platform,
   View,
   Text,
   TouchableOpacity,
@@ -7,6 +8,7 @@ import {
   StatusBar,
 } from "react-native";
 import { biometricService } from "@/services/biometric.service";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 interface AppLockOverlayProps {
   onUnlock: () => void;
@@ -29,10 +31,20 @@ export function AppLockOverlay({ onUnlock }: AppLockOverlayProps) {
   }, []);
 
   return (
-    <View style={styles.overlay}>
+    <View
+      style={styles.overlay}
+      accessibilityViewIsModal={true}
+      {...(Platform.OS === "android" && { importantForAccessibility: "yes" })}
+    >
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
-        <Text style={styles.emoji}>🔒</Text>
+        <AppIcon
+          name="lock-outline"
+          color="#FFFFFF"
+          backgroundColor="rgba(255,255,255,0.12)"
+          size={34}
+          frameSize={68}
+        />
         <Text style={styles.title}>MoodMap est verrouillé</Text>
         <Text style={styles.subtitle}>
           Ton journal est protégé par biométrie.
@@ -61,10 +73,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
     paddingHorizontal: 40,
-  },
-  emoji: {
-    fontSize: 56,
-    marginBottom: 8,
   },
   title: {
     fontSize: 22,

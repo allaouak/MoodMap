@@ -1,0 +1,16 @@
+appId: ${APP_ID}
+---
+- launchApp
+- assertVisible:
+    id: "tab-today"
+- tapOn:
+    id: "tab-settings"
+- assertVisible: "Réglages"
+- scrollUntilVisible:
+    element:
+      text: "Supprimer mon compte"
+    direction: DOWN
+- tapOn: "Supprimer mon compte"
+- assertVisible: "Cette action est irréversible"
+- tapOn: "Annuler"
+- assertVisible: "Réglages"

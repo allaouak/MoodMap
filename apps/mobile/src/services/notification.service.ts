@@ -60,7 +60,7 @@ export const notificationService = {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "MoodMap",
-        body: "Ton moment de pause est arrivé 🌿",
+        body: "Ton moment de pause est arrivé.",
         sound: true,
       },
       trigger: {

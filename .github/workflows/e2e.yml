@@ -1,0 +1,77 @@
+name: E2E (Maestro iOS)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e-ios:
+    name: Maestro E2E — iOS Simulator
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    env:
+      APP_ID: com.khettal.moodmap.dev
+      TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+      TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.33.2"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS simulator app
+        working-directory: apps/mobile
+        run: eas build --platform ios --profile development --local --non-interactive --output build.tar.gz
+
+      - name: Extract app
+        working-directory: apps/mobile
+        run: |
+          mkdir -p build
+          tar -xzf build.tar.gz -C build
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available | grep "iPhone 16 Pro" | head -1 | grep -oE '[A-F0-9-]{36}')
+          xcrun simctl boot "$UDID"
+          echo "SIMULATOR_UDID=$UDID" >> $GITHUB_ENV
+
+      - name: Install app on simulator
+        working-directory: apps/mobile
+        run: xcrun simctl install "$SIMULATOR_UDID" build/*.app
+
+      - name: Install Maestro
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+
+      - name: Run Maestro flows
+        run: |
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro test .maestro/ \
+            --env APP_ID="$APP_ID" \
+            --env TEST_EMAIL="$TEST_EMAIL" \
+            --env TEST_PASSWORD="$TEST_PASSWORD" \
+            --format junit \
+            --output maestro-report.xml
+
+      - name: Upload Maestro report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-report
+          path: maestro-report.xml

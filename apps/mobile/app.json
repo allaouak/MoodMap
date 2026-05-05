@@ -12,22 +12,34 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8F4FF"
+      "backgroundColor": "#1E0857",
+      "imageWidth": 148
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.moodmap.app",
-      "associatedDomains": ["applinks:moodmap.app"],
+      "bundleIdentifier": "com.khettal.moodmap.dev",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal."
+        "NSFaceIDUsageDescription": "MoodMap utilise Face ID pour protéger l'accès à ton journal.",
+        "NSHealthShareUsageDescription": "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
+        "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé.",
+        "NSLocalNetworkUsageDescription": "MoodMap accède au réseau local pour se connecter au serveur de développement Expo.",
+        "NSBonjourServices": ["_expo._tcp", "_http._tcp"]
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#F8F4FF"
+        "backgroundColor": "#1E0857"
       },
       "package": "com.moodmap.app",
+      "permissions": [
+        "android.permission.health.READ_SLEEP_SESSION",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_EXERCISE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -39,7 +51,10 @@
               "pathPrefix": "/reset-password"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -51,13 +66,40 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications",
       "expo-local-authentication",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "background": false,
+          "NSHealthShareUsageDescription": "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
+          "NSHealthUpdateUsageDescription": "MoodMap ne modifie pas tes données de santé."
+        }
+      ],
+      [
+        "react-native-health-connect",
+        {
+          "permissions": [
+            "android.permission.health.READ_SLEEP_SESSION",
+            "android.permission.health.READ_STEPS",
+            "android.permission.health.READ_EXERCISE"
+          ]
+        }
+      ],
       [
         "@sentry/react-native/expo",
         {
           "organization": "khettal",
           "project": "moodmap"
+        }
+      ],
+      "./plugins/withPersonalTeamEntitlements",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 148,
+          "resizeMode": "contain",
+          "backgroundColor": "#1E0857"
         }
       ],
       [

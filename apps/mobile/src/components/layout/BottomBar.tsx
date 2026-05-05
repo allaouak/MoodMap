@@ -1,12 +1,47 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import { usePathname, router } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const TABS = [
-  { path: "/", label: "Aujourd'hui", emoji: "🏠" },
-  { path: "/calendar", label: "Calendrier", emoji: "📅" },
-  { path: "/insights", label: "Tendances", emoji: "📊" },
-  { path: "/settings", label: "Réglages", emoji: "⚙️" },
-] as const;
+type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+interface BottomTab {
+  path: "/" | "/calendar" | "/insights" | "/settings";
+  label: string;
+  icon: IconName;
+  testID: string;
+}
+
+const TABS: readonly BottomTab[] = [
+  {
+    path: "/",
+    label: "Aujourd'hui",
+    icon: "home-heart",
+    testID: "tab-today",
+  },
+  {
+    path: "/calendar",
+    label: "Calendrier",
+    icon: "calendar-month-outline",
+    testID: "tab-calendar",
+  },
+  {
+    path: "/insights",
+    label: "Tendances",
+    icon: "chart-line",
+    testID: "tab-insights",
+  },
+  {
+    path: "/settings",
+    label: "Réglages",
+    icon: "cog-outline",
+    testID: "tab-settings",
+  },
+];
 
 export function BottomBar() {
   const pathname = usePathname();
@@ -21,10 +56,16 @@ export function BottomBar() {
             style={styles.tab}
             activeOpacity={0.7}
             onPress={() => router.replace(tab.path)}
+            testID={tab.testID}
+            accessibilityLabel={tab.label}
           >
-            <Text style={[styles.emoji, !focused && styles.dim]}>
-              {tab.emoji}
-            </Text>
+            <View style={[styles.iconFrame, focused && styles.iconFrameFocused]}>
+              <MaterialCommunityIcons
+                name={tab.icon}
+                size={24}
+                color={focused ? "#6D28D9" : "#A78BFA"}
+              />
+            </View>
             <Text style={[styles.label, { color: focused ? "#6D28D9" : "#9CA3AF" }]}>
               {tab.label}
             </Text>
@@ -51,11 +92,15 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     gap: 2,
   },
-  emoji: {
-    fontSize: 20,
+  iconFrame: {
+    width: 36,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
   },
-  dim: {
-    opacity: 0.35,
+  iconFrameFocused: {
+    backgroundColor: "#F3E8FF",
   },
   label: {
     fontSize: 11,

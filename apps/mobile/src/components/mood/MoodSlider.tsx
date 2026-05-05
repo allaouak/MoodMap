@@ -1,13 +1,16 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import * as Haptics from "expo-haptics";
-import { MoodLevel, MOOD_EMOJI, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodLevel, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 
 interface MoodSliderProps {
   label: string;
   value: MoodLevel;
   onChange: (value: MoodLevel) => void;
   emoji?: boolean;
+  anchors?: readonly [string, string];
+  testIDPrefix?: string;
 }
 
 const LEVELS: MoodLevel[] = [1, 2, 3, 4, 5];
@@ -17,6 +20,8 @@ export function MoodSlider({
   value,
   onChange,
   emoji = false,
+  anchors,
+  testIDPrefix,
 }: MoodSliderProps) {
   const handlePress = (level: MoodLevel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -24,7 +29,7 @@ export function MoodSlider({
   };
 
   return (
-    <View className="w-full gap-3">
+    <View className="w-full gap-2">
       <Text className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
         {label}
       </Text>
@@ -37,13 +42,15 @@ export function MoodSlider({
               key={level}
               onPress={() => handlePress(level)}
               activeOpacity={0.7}
+              testID={testIDPrefix ? `${testIDPrefix}-${level}` : undefined}
+              accessibilityLabel={`${label} ${level}`}
               className={`flex-1 items-center justify-center py-3 rounded-2xl border-2 ${
                 isSelected ? "border-transparent" : "border-gray-100 bg-gray-50"
               }`}
               style={isSelected ? { backgroundColor: color, borderColor: color } : {}}
             >
               {emoji ? (
-                <Text className="text-2xl">{MOOD_EMOJI[level]}</Text>
+                <MoodFaceIcon level={level} selected={isSelected} />
               ) : (
                 <Text
                   className={`text-lg font-bold ${
@@ -62,6 +69,12 @@ export function MoodSlider({
           );
         })}
       </View>
+      {!emoji && anchors && (
+        <View className="flex-row justify-between px-1">
+          <Text className="text-xs text-gray-400">{anchors[0]}</Text>
+          <Text className="text-xs text-gray-400">{anchors[1]}</Text>
+        </View>
+      )}
     </View>
   );
 }

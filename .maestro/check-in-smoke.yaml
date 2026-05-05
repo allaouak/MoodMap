@@ -1,0 +1,35 @@
+appId: ${APP_ID}
+---
+- launchApp
+- assertVisible:
+    id: "tab-today"
+- tapOn:
+    id: "tab-today"
+- tapOn:
+    id: "today-open-check-in"
+- assertVisible:
+    id: "check-in-form"
+- tapOn:
+    id: "check-in-mood-4"
+- tapOn:
+    id: "check-in-energy-4"
+- tapOn:
+    id: "check-in-stress-2"
+- tapOn:
+    id: "check-in-next"
+- assertVisible: "Quelques mots ?"
+- tapOn:
+    id: "check-in-tag-repos"
+- tapOn:
+    id: "check-in-note-input"
+- inputText: "Check-in E2E"
+- hideKeyboard
+- tapOn:
+    id: "check-in-next"
+- tapOn:
+    id: "check-in-submit"
+- assertNotVisible:
+    id: "check-in-form"
+- assertVisible:
+    id: "tab-today"
+

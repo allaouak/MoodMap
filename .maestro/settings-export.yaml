@@ -1,0 +1,13 @@
+appId: ${APP_ID}
+---
+- launchApp
+- assertVisible:
+    id: "tab-today"
+- tapOn:
+    id: "tab-settings"
+- assertVisible: "Réglages"
+- scrollUntilVisible:
+    element:
+      text: "Exporter mes données"
+    direction: DOWN
+- tapOn: "Exporter mes données"

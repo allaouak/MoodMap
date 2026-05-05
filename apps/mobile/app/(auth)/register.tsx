@@ -15,8 +15,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { authService } from "@/services/auth.service";
-import { registerSchema } from "@/lib/validation";
+import { registerSchema } from "@moodmap/validation";
+import { PasswordStrengthIndicator } from "@/features/auth/PasswordStrengthIndicator";
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -25,8 +27,11 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
+
+  const password = watch("password") ?? "";
 
   const onSubmit = async (values: RegisterForm) => {
     try {
@@ -67,9 +72,12 @@ export default function RegisterScreen() {
             <TouchableOpacity onPress={() => router.back()} className="mb-4">
               <Text className="text-brand-500 text-base">← Retour</Text>
             </TouchableOpacity>
-            <Text className="text-3xl font-bold text-gray-900">
-              Crée ton compte 🌱
-            </Text>
+            <View className="flex-row items-center gap-3">
+              <Text className="text-3xl font-bold text-gray-900">
+                Crée ton compte
+              </Text>
+              <AppIcon name="sprout-outline" size={18} frameSize={34} />
+            </View>
             <Text className="text-gray-500">
               Ton journal t'appartient. Tes données restent privées.
             </Text>
@@ -88,6 +96,7 @@ export default function RegisterScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.displayName?.message}
+                  testID="register-display-name-input"
                 />
               )}
             />
@@ -103,24 +112,29 @@ export default function RegisterScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.email?.message}
+                  testID="register-email-input"
                 />
               )}
             />
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Mot de passe"
-                  placeholder="••••••••"
-                  secureTextEntry
-                  textContentType="newPassword"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.password?.message}
-                />
-              )}
-            />
+            <View className="gap-2">
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Mot de passe"
+                    placeholder="••••••••"
+                    secureTextEntry
+                    textContentType="newPassword"
+                    value={value}
+                    onChangeText={onChange}
+                    error={errors.password?.message}
+                    testID="register-password-input"
+                  />
+                )}
+              />
+              {password.length > 0 && <PasswordStrengthIndicator password={password} />}
+            </View>
             <Controller
               control={control}
               name="confirmPassword"
@@ -133,6 +147,7 @@ export default function RegisterScreen() {
                   value={value}
                   onChangeText={onChange}
                   error={errors.confirmPassword?.message}
+                  testID="register-confirm-password-input"
                 />
               )}
             />
@@ -144,6 +159,7 @@ export default function RegisterScreen() {
               size="lg"
               loading={loading}
               onPress={handleSubmit(onSubmit)}
+              testID="register-submit-button"
             />
             <Text className="text-xs text-center text-gray-400 px-4">
               En créant un compte, tu acceptes nos conditions d'utilisation et

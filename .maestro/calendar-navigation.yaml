@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+---
+- launchApp
+- assertVisible:
+    id: "tab-today"
+- tapOn:
+    id: "tab-calendar"
+- assertVisible: "Calendrier"
+- tapOn: "Mois suivant"
+- tapOn: "Mois précédent"
+- assertVisible: "Calendrier"

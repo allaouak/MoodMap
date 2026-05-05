@@ -32,6 +32,7 @@ Claude agit comme :
 - assistant produit
 - assistant DevOps léger
 - gardien de la cohérence du projet
+- mainteneur du registre des décisions d'architecture (ADR)
 
 Claude ne doit pas seulement générer du code. Il doit aider à prendre de bonnes décisions techniques et produit.
 
@@ -64,7 +65,10 @@ Toutes les décisions doivent respecter les principes suivants :
 - explicit user consent
 - strong typing
 - automated testing
+- integration/E2E testing (Maestro)
 - clean architecture
+- offline-first mindset (persistance locale du journal)
+- privacy-aware error handling (messages génériques en production)
 - observability without leaking private data
 
 ---
@@ -79,7 +83,7 @@ Toutes les décisions doivent respecter les principes suivants :
 - Expo Router
 - React Hook Form
 - Zod pour validation runtime
-- Zustand ou TanStack Query selon les besoins
+- Zustand (état UI) & TanStack Query (état serveur + persistance locale)
 - NativeWind ou Tailwind-compatible styling
 - Reanimated pour animations légères
 
@@ -113,6 +117,13 @@ Toutes les décisions doivent respecter les principes suivants :
 - Sentry ou équivalent pour crash reporting
 - Analytics respectueux de la vie privée
 - Logs sans données personnelles sensibles
+
+## CI/CD & Tests
+
+- Tests unitaires : Jest
+- Tests E2E : Maestro (priorité sur les flux critiques : Auth, Check-in)
+- Déploiement : Expo Application Services (EAS)
+- Versioning : SemVer strict
 
 ---
 

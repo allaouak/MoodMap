@@ -1,9 +1,15 @@
+import type { ComponentProps } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { MoodEntry, MOOD_EMOJI, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodEntry, MOOD_LABELS, MOOD_COLOR } from "@/types";
+import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
+import { AppIcon } from "@/components/ui/AppIcon";
+import { ContextualEntry } from "@/types/contextual";
+import { formatHoursFromMinutes, formatSleepDuration, hasContextualData } from "@/utils/contextual";
 import { formatTime } from "@/utils/date";
 
 interface TodayCardProps {
   entry: MoodEntry;
+  contextualEntry?: ContextualEntry | null;
   onEdit: () => void;
 }
 
@@ -25,8 +31,35 @@ function MetricBadge({ label, value, color }: { label: string; value: number; co
   );
 }
 
-export function TodayCard({ entry, onEdit }: TodayCardProps) {
+interface ContextMetricProps {
+  icon: ComponentProps<typeof AppIcon>["name"];
+  label: string;
+  value: string;
+  color: string;
+  backgroundColor: string;
+}
+
+function ContextMetric({ icon, label, value, color, backgroundColor }: ContextMetricProps) {
+  return (
+    <View className="flex-row items-center gap-2 bg-gray-50 rounded-2xl px-3 py-2">
+      <AppIcon
+        name={icon}
+        color={color}
+        backgroundColor={backgroundColor}
+        size={16}
+        frameSize={30}
+      />
+      <View>
+        <Text className="text-[11px] text-gray-400 font-medium">{label}</Text>
+        <Text className="text-sm text-gray-700 font-semibold">{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+export function TodayCard({ entry, contextualEntry, onEdit }: TodayCardProps) {
   const moodColor = MOOD_COLOR[entry.mood];
+  const showContext = hasContextualData(contextualEntry);
 
   return (
     <View className="bg-white rounded-3xl overflow-hidden">
@@ -40,7 +73,7 @@ export function TodayCard({ entry, onEdit }: TodayCardProps) {
             className="w-16 h-16 rounded-full items-center justify-center"
             style={{ backgroundColor: moodColor + "20" }}
           >
-            <Text className="text-4xl">{MOOD_EMOJI[entry.mood]}</Text>
+            <MoodFaceIcon level={entry.mood} size={44} />
           </View>
           <View className="flex-1 gap-0.5">
             <Text className="text-xl font-bold text-gray-900">
@@ -53,6 +86,8 @@ export function TodayCard({ entry, onEdit }: TodayCardProps) {
           <TouchableOpacity
             onPress={onEdit}
             className="bg-gray-100 px-3 py-1.5 rounded-xl"
+            testID="today-open-check-in"
+            accessibilityLabel="Modifier mon ressenti"
           >
             <Text className="text-sm text-gray-600 font-medium">Modifier</Text>
           </TouchableOpacity>
@@ -75,6 +110,43 @@ export function TodayCard({ entry, onEdit }: TodayCardProps) {
                 <Text className="text-xs text-brand-600 font-medium">{tag}</Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {showContext && (
+          <View className="gap-2">
+            <Text className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
+              Données du jour
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {contextualEntry?.sleep_duration_min != null && (
+                <ContextMetric
+                  icon="moon-waning-crescent"
+                  label="Sommeil"
+                  value={formatSleepDuration(contextualEntry.sleep_duration_min)}
+                  color="#6D28D9"
+                  backgroundColor="#F3E8FF"
+                />
+              )}
+              {contextualEntry?.activity_steps != null && (
+                <ContextMetric
+                  icon="shoe-sneaker"
+                  label="Activité"
+                  value={`${contextualEntry.activity_steps.toLocaleString("fr-FR")} pas`}
+                  color="#059669"
+                  backgroundColor="#ECFDF5"
+                />
+              )}
+              {contextualEntry?.screen_total_min != null && (
+                <ContextMetric
+                  icon="cellphone"
+                  label="Écran"
+                  value={formatHoursFromMinutes(contextualEntry.screen_total_min)}
+                  color="#0284C7"
+                  backgroundColor="#EFF6FF"
+                />
+              )}
+            </View>
           </View>
         )}
 

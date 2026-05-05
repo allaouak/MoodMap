@@ -1,0 +1,82 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+    <!-- Fond violet profond : lumineux en haut-gauche, sombre en bas-droite -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#9061F9"/>
+      <stop offset="55%"  stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#1E0857"/>
+    </linearGradient>
+
+    <!-- Lueur douce en haut-gauche (donne de la profondeur) -->
+    <radialGradient id="toplight" cx="28%" cy="22%" r="55%">
+      <stop offset="0%"   stop-color="#A78BFA" stop-opacity="0.50"/>
+      <stop offset="100%" stop-color="#6D28D9" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Lueur chaude derrière le point central -->
+    <radialGradient id="dotHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#EDE9FE" stop-opacity="0.60"/>
+      <stop offset="100%" stop-color="#6D28D9" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Blur pour l'effet glow du point -->
+    <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="30" result="blur"/>
+    </filter>
+
+    <!-- Clip arrondi style iOS (squircle approché) -->
+    <clipPath id="ios">
+      <rect width="1024" height="1024" rx="220" ry="220"/>
+    </clipPath>
+
+  </defs>
+
+  <g clip-path="url(#ios)">
+
+    <!-- ── FOND ─────────────────────────────────────────────────── -->
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#toplight)"/>
+
+    <!-- ── VAGUE FANTÔME (profondeur, derrière) ───────────────── -->
+    <path d="M -60 658
+             C 210 658 375 358 512 358
+             C 649 358 814 658 1084 658"
+          stroke="rgba(255,255,255,0.08)"
+          stroke-width="108"
+          fill="none"
+          stroke-linecap="round"/>
+
+    <!-- ── VAGUE PRINCIPALE ────────────────────────────────────── -->
+    <path d="M -60 642
+             C 210 642 375 370 512 370
+             C 649 370 814 642 1084 642"
+          stroke="rgba(255,255,255,0.92)"
+          stroke-width="58"
+          fill="none"
+          stroke-linecap="round"/>
+
+    <!-- ── POINTS DE DONNÉES (humeurs passées) ────────────────── -->
+    <!-- Point 1 — gauche bas -->
+    <circle cx="158"  cy="614" r="17" fill="rgba(255,255,255,0.52)"/>
+    <!-- Point 2 — gauche montant -->
+    <circle cx="318"  cy="507" r="17" fill="rgba(255,255,255,0.52)"/>
+    <!-- Point 3 — droite descendant (symétrique) -->
+    <circle cx="706"  cy="507" r="17" fill="rgba(255,255,255,0.52)"/>
+    <!-- Point 4 — droite bas (symétrique) -->
+    <circle cx="866"  cy="614" r="17" fill="rgba(255,255,255,0.52)"/>
+
+    <!-- ── HALO GLOW derrière le point central ─────────────────── -->
+    <circle cx="512" cy="370" r="130"
+            fill="url(#dotHalo)"
+            filter="url(#glow)"
+            opacity="0.70"/>
+
+    <!-- ── POINT CENTRAL (moment présent) ────────────────────── -->
+    <circle cx="512" cy="370" r="66" fill="white"/>
+
+    <!-- Reflet spéculaire (donne du relief au point) -->
+    <circle cx="492" cy="350" r="22" fill="rgba(255,255,255,0.48)"/>
+
+  </g>
+</svg>

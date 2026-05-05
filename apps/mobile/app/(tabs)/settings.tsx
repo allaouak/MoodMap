@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Share,
 } from "react-native";
+import * as Sharing from "expo-sharing";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { authService } from "@/services/auth.service";
@@ -20,8 +23,17 @@ import {
   NotificationPrefs,
 } from "@/services/notification.service";
 import { biometricService } from "@/services/biometric.service";
+import { useContextualStore } from "@/stores/contextual.store";
+import { contextualConsentService } from "@/services/contextual-consent.service";
+import { sleepService } from "@/services/sleep.service";
+import { activityService } from "@/services/activity.service";
+import { dataExportService } from "@/services/data-export.service";
+import type { ContextualModule } from "@/types/contextual";
+import { AppIcon } from "@/components/ui/AppIcon";
+import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
+import { isExpoGo } from "@/utils/runtime";
 
-const TIME_OPTIONS = [
+const TIME_PRESETS = [
   { label: "8h00", hour: 8, minute: 0 },
   { label: "12h00", hour: 12, minute: 0 },
   { label: "18h00", hour: 18, minute: 0 },
@@ -29,9 +41,69 @@ const TIME_OPTIONS = [
   { label: "21h30", hour: 21, minute: 30 },
 ];
 
+const MODULE_LABEL: Record<ContextualModule, string> = {
+  sleep: "Sommeil",
+  activity: "Activité physique",
+  screen_time: "Temps d'écran",
+};
+
+const MODULE_DESC: Record<ContextualModule, string> = {
+  sleep: "Durée et heure de réveil depuis l'app Santé",
+  activity: "Pas et minutes actives depuis l'app Santé",
+  screen_time: "Saisie manuelle lors du check-in",
+};
+
+const MODULE_EXPLAIN: Record<ContextualModule, string> = {
+  sleep: "MoodMap va lire tes données de sommeil depuis l'app Santé pour enrichir ton journal. Ces données restent sur ton compte et ne sont jamais partagées.",
+  activity: "MoodMap va lire ton nombre de pas et tes minutes d'activité depuis l'app Santé. Ces données restent sur ton compte et ne sont jamais partagées.",
+  screen_time: "Tu pourras saisir ton temps d'écran manuellement lors de chaque check-in. Aucun accès aux apps ou à l'historique n'est demandé.",
+};
+
+const MODULE_ICON: Record<ContextualModule, ComponentProps<typeof AppIcon>["name"]> = {
+  sleep: "moon-waning-crescent",
+  activity: "shoe-sneaker",
+  screen_time: "cellphone",
+};
+
+const MODULE_COLOR: Record<ContextualModule, { color: string; backgroundColor: string }> = {
+  sleep: { color: "#6366F1", backgroundColor: "#EEF2FF" },
+  activity: { color: "#059669", backgroundColor: "#ECFDF5" },
+  screen_time: { color: "#0284C7", backgroundColor: "#E0F2FE" },
+};
+
+const NATIVE_HEALTH_MODULES: ContextualModule[] = ["sleep", "activity"];
+
+function SectionHeader({
+  icon,
+  title,
+  color = "#6D28D9",
+  backgroundColor = "#F3E8FF",
+}: {
+  icon: ComponentProps<typeof AppIcon>["name"];
+  title: string;
+  color?: string;
+  backgroundColor?: string;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <AppIcon
+        name={icon}
+        color={color}
+        backgroundColor={backgroundColor}
+        size={16}
+        frameSize={30}
+      />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const { profile, session, user, setProfile } = useAuth();
+  const queryClient = useQueryClient();
   const { reset, setLockEnabled: setGlobalLockEnabled } = useAuthStore();
+  const { consents, setConsent } = useContextualStore();
+  const [consentSaving, setConsentSaving] = useState(false);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [saving, setSaving] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(false);
@@ -42,9 +114,36 @@ export default function SettingsScreen() {
   const [editNameVisible, setEditNameVisible] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [editNameLoading, setEditNameLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [customHour, setCustomHour] = useState("");
+  const [customMin, setCustomMin] = useState("");
+  const nativeHealthUnavailable = isExpoGo();
+
+  const invalidateContextualQueries = async () => {
+    if (!user) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["todayContextualEntry", user.id] }),
+      queryClient.invalidateQueries({ queryKey: ["contextualEntries", user.id] }),
+    ]);
+  };
+
+  const updateProfileMutation = useMutation({
+    mutationFn: (newName: string) => {
+      if (!user) throw new Error("No user");
+      return authService.updateProfile(user.id, { display_name: newName });
+    },
+    onSuccess: (updatedProfile) => {
+      setProfile(updatedProfile);
+      setEditNameVisible(false);
+    },
+  });
 
   useEffect(() => {
-    notificationService.getPrefs().then(setPrefs);
+    notificationService.getPrefs().then((p) => {
+      setPrefs(p);
+      setCustomHour(String(p.hour));
+      setCustomMin(String(p.minute).padStart(2, "0"));
+    });
     biometricService.isSupported().then(setBiometricSupported);
     biometricService.getLockEnabled().then(setLockEnabled);
   }, []);
@@ -59,9 +158,7 @@ export default function SettingsScreen() {
     if (!trimmed || !user) return;
     setEditNameLoading(true);
     try {
-      const updated = await authService.updateProfile(user.id, { display_name: trimmed });
-      setProfile(updated);
-      setEditNameVisible(false);
+      await updateProfileMutation.mutateAsync(trimmed);
     } catch {
       Alert.alert("Erreur", "Impossible de mettre à jour le nom. Réessaie.");
     } finally {
@@ -104,6 +201,104 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleConsentToggle = async (module: ContextualModule, enabled: boolean) => {
+    if (!user) return;
+    if (enabled && nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module)) {
+      Alert.alert(
+        "Development build requise",
+        "Ce module utilise une API santé native qui n'est pas disponible dans Expo Go."
+      );
+      return;
+    }
+
+    if (enabled) {
+      Alert.alert(
+        `Activer : ${MODULE_LABEL[module]}`,
+        MODULE_EXPLAIN[module],
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Autoriser",
+            onPress: async () => {
+              setConsentSaving(true);
+              try {
+                if (module === "sleep") {
+                  const ok = await sleepService.requestPermission();
+                  if (!ok) {
+                    Alert.alert(
+                      "Module indisponible",
+                      isExpoGo()
+                        ? "Le sommeil nécessite une development build Expo, car HealthKit n'est pas disponible dans Expo Go."
+                        : "Autorise l'accès dans les réglages de l'app Santé."
+                    );
+                    return;
+                  }
+                } else if (module === "activity") {
+                  const ok = await activityService.requestPermission();
+                  if (!ok) {
+                    Alert.alert(
+                      "Module indisponible",
+                      isExpoGo()
+                        ? "L'activité physique nécessite une development build Expo, car les APIs santé natives ne sont pas disponibles dans Expo Go."
+                        : "Autorise l'accès dans les réglages de l'app Santé."
+                    );
+                    return;
+                  }
+                }
+                await contextualConsentService.setConsent(user.id, module, true);
+                setConsent(module, true);
+                await invalidateContextualQueries();
+              } catch {
+                Alert.alert("Erreur", "Impossible d'activer ce module. Réessaie.");
+              } finally {
+                setConsentSaving(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        `Désactiver : ${MODULE_LABEL[module]}`,
+        "Veux-tu aussi supprimer les données déjà enregistrées ?",
+        [
+          {
+            text: "Garder les données",
+            onPress: async () => {
+              setConsentSaving(true);
+              try {
+                await contextualConsentService.setConsent(user.id, module, false);
+                setConsent(module, false);
+                await invalidateContextualQueries();
+              } catch {
+                Alert.alert("Erreur", "Impossible de désactiver ce module. Réessaie.");
+              } finally {
+                setConsentSaving(false);
+              }
+            },
+          },
+          {
+            text: "Supprimer les données",
+            style: "destructive",
+            onPress: async () => {
+              setConsentSaving(true);
+              try {
+                await contextualConsentService.setConsent(user.id, module, false);
+                await contextualConsentService.deleteModuleData(user.id, module);
+                setConsent(module, false);
+                await invalidateContextualQueries();
+              } catch {
+                Alert.alert("Erreur", "Impossible de désactiver ce module. Réessaie.");
+              } finally {
+                setConsentSaving(false);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
   const handleTimeSelect = async (hour: number, minute: number) => {
     if (!prefs) return;
     const next = { ...prefs, hour, minute };
@@ -111,11 +306,27 @@ export default function SettingsScreen() {
     try {
       await notificationService.apply(next);
       setPrefs(next);
+      setCustomHour(String(hour));
+      setCustomMin(String(minute).padStart(2, "0"));
     } catch {
       Alert.alert("Erreur", "Impossible de mettre à jour l'heure. Réessaie.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const applyCustomTime = async () => {
+    const h = parseInt(customHour, 10);
+    const m = parseInt(customMin, 10);
+    if (isNaN(h) || h < 0 || h > 23) {
+      Alert.alert("Heure invalide", "L'heure doit être comprise entre 0 et 23.");
+      return;
+    }
+    if (isNaN(m) || m < 0 || m > 59) {
+      Alert.alert("Minutes invalides", "Les minutes doivent être comprises entre 0 et 59.");
+      return;
+    }
+    await handleTimeSelect(h, m);
   };
 
   const handleDeleteAccount = () => {
@@ -134,6 +345,36 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleExportData = async () => {
+    if (!user) return;
+    setExportLoading(true);
+    let fileUri: string | null = null;
+    try {
+      const email = session?.user?.email ?? null;
+      const canShareFile = await Sharing.isAvailableAsync();
+
+      if (canShareFile) {
+        fileUri = await dataExportService.writeExportFile(user.id, email);
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "application/json",
+          dialogTitle: "Exporter mes données MoodMap",
+          UTI: "public.json",
+        });
+      } else {
+        const json = await dataExportService.buildExportJson(user.id, email);
+        await Share.share({
+          title: "Export MoodMap",
+          message: json,
+        });
+      }
+    } catch {
+      Alert.alert("Erreur", "Impossible de préparer l'export de tes données. Réessaie.");
+    } finally {
+      if (fileUri) dataExportService.deleteExportFile(fileUri);
+      setExportLoading(false);
+    }
   };
 
   const handleVerifyAndDelete = async () => {
@@ -166,6 +407,17 @@ export default function SettingsScreen() {
     } finally {
       setOtpLoading(false);
     }
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    Alert.alert(
+      "Mot de passe mis à jour",
+      "Ton mot de passe a été changé avec succès."
+    );
+  };
+
+  const handlePasswordChangeCancel = () => {
+    // Ne rien faire, l'utilisateur a annulé
   };
 
   const handleSignOut = () => {
@@ -222,7 +474,7 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Rappel quotidien</Text>
+          <SectionHeader icon="bell-outline" title="Rappel quotidien" />
           {!prefs ? (
             <ActivityIndicator color="#6D28D9" style={{ paddingVertical: 12 }} />
           ) : (
@@ -245,35 +497,56 @@ export default function SettingsScreen() {
 
               {prefs.enabled && (
                 <View style={styles.timeSection}>
-                  <Text style={styles.timeSectionLabel}>Heure du rappel</Text>
+                  <Text style={styles.timeSectionLabel}>Raccourcis</Text>
                   <View style={styles.timeOptions}>
-                    {TIME_OPTIONS.map((opt) => {
+                    {TIME_PRESETS.map((opt) => {
                       const selected =
                         prefs.hour === opt.hour && prefs.minute === opt.minute;
                       return (
                         <TouchableOpacity
                           key={opt.label}
-                          style={[
-                            styles.timeChip,
-                            selected && styles.timeChipSelected,
-                          ]}
+                          style={[styles.timeChip, selected && styles.timeChipSelected]}
                           activeOpacity={0.7}
-                          onPress={() =>
-                            handleTimeSelect(opt.hour, opt.minute)
-                          }
+                          onPress={() => handleTimeSelect(opt.hour, opt.minute)}
                           disabled={saving}
                         >
-                          <Text
-                            style={[
-                              styles.timeChipText,
-                              selected && styles.timeChipTextSelected,
-                            ]}
-                          >
+                          <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>
                             {opt.label}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
+                  </View>
+
+                  <Text style={styles.timeSectionLabel}>Heure personnalisée</Text>
+                  <View style={styles.customTimeRow}>
+                    <TextInput
+                      style={styles.customTimeInput}
+                      value={customHour}
+                      onChangeText={(t) => setCustomHour(t.replace(/\D/g, "").slice(0, 2))}
+                      keyboardType="numeric"
+                      maxLength={2}
+                      placeholder="HH"
+                      placeholderTextColor="#D1D5DB"
+                    />
+                    <Text style={styles.customTimeSep}>:</Text>
+                    <TextInput
+                      style={styles.customTimeInput}
+                      value={customMin}
+                      onChangeText={(t) => setCustomMin(t.replace(/\D/g, "").slice(0, 2))}
+                      keyboardType="numeric"
+                      maxLength={2}
+                      placeholder="MM"
+                      placeholderTextColor="#D1D5DB"
+                    />
+                    <TouchableOpacity
+                      style={[styles.customTimeApply, saving && styles.actionDisabled]}
+                      onPress={applyCustomTime}
+                      disabled={saving}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.customTimeApplyText}>Définir</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}
@@ -283,7 +556,7 @@ export default function SettingsScreen() {
 
         {/* Verrouillage biométrique */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Sécurité</Text>
+          <SectionHeader icon="shield-lock-outline" title="Sécurité" />
           {biometricSupported ? (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -304,17 +577,96 @@ export default function SettingsScreen() {
               Face ID ou Touch ID non disponible sur cet appareil.
             </Text>
           )}
+          
+          <View style={styles.separator} />
+          
+          <ChangePasswordForm 
+            userEmail={session?.user?.email ?? ""} 
+            onSuccess={handlePasswordChangeSuccess} 
+            onCancel={handlePasswordChangeCancel} 
+          />
+        </View>
+
+        {/* Mon quotidien */}
+        <View style={styles.card}>
+          <SectionHeader icon="database-outline" title="Mon quotidien" />
+          <Text style={styles.contextualIntro}>
+            Enrichis ton journal avec des données de ton quotidien. Chaque module est indépendant et révocable.
+          </Text>
+          {(["sleep", "activity", "screen_time"] as ContextualModule[]).map((module) => (
+            <View key={module} style={styles.contextualRow}>
+              <View style={styles.moduleInfo}>
+                <AppIcon
+                  name={MODULE_ICON[module]}
+                  color={MODULE_COLOR[module].color}
+                  backgroundColor={MODULE_COLOR[module].backgroundColor}
+                  size={17}
+                  frameSize={34}
+                />
+                <View style={styles.rowLeft}>
+                  <View style={styles.moduleTitleRow}>
+                    <Text style={styles.rowLabel}>{MODULE_LABEL[module]}</Text>
+                    {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
+                      <View style={styles.moduleBadge}>
+                        <Text style={styles.moduleBadgeText}>Dev build</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.rowSub}>{MODULE_DESC[module]}</Text>
+                  {nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module) && (
+                    <Text style={styles.moduleUnavailableText}>
+                      Non disponible dans Expo Go.
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Switch
+                value={consents[module]}
+                onValueChange={(v) => handleConsentToggle(module, v)}
+                trackColor={{ false: "#E5E7EB", true: "#C4B5FD" }}
+                thumbColor={consents[module] ? "#6D28D9" : "#F9FAFB"}
+                disabled={
+                  consentSaving ||
+                  (nativeHealthUnavailable && NATIVE_HEALTH_MODULES.includes(module))
+                }
+              />
+            </View>
+          ))}
         </View>
 
         {/* Confidentialité */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Confidentialité</Text>
+          <SectionHeader icon="lock-check-outline" title="Confidentialité" />
           <Text style={styles.privacyText}>
             Tes données sont transmises via HTTPS et stockées dans une base
             sécurisée avec accès strictement limité à ton compte. MoodMap
             utilise Supabase comme hébergeur de données. Tu peux supprimer ton
             compte et toutes tes données via le bouton de suppression ci-dessous.
           </Text>
+          <TouchableOpacity
+            style={[styles.exportBtn, exportLoading && styles.actionDisabled]}
+            onPress={handleExportData}
+            activeOpacity={0.8}
+            disabled={exportLoading}
+          >
+            {exportLoading ? (
+              <ActivityIndicator color="#6D28D9" size="small" />
+            ) : (
+              <>
+                <AppIcon
+                  name="download-outline"
+                  color="#6D28D9"
+                  backgroundColor="#EDE5FF"
+                  size={18}
+                  frameSize={34}
+                />
+                <View style={styles.exportTextBlock}>
+                  <Text style={styles.exportBtnLabel}>Exporter mes données</Text>
+                  <Text style={styles.exportBtnSub}>Profil, humeurs et données contextuelles au format JSON</Text>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Déconnexion */}
@@ -440,7 +792,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 16 },
 
-  pageTitle: { fontSize: 26, fontWeight: "700", color: "#1F2937", paddingHorizontal: 4 },
+  pageTitle: { fontSize: 28, lineHeight: 34, fontWeight: "700", color: "#1F2937", paddingHorizontal: 4 },
 
   card: {
     backgroundColor: "#FFFFFF",
@@ -471,6 +823,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 24, fontWeight: "700", color: "#6D28D9" },
   displayName: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
 
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
@@ -483,9 +836,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  contextualRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    minHeight: 54,
+  },
+  moduleInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   rowLeft: { flex: 1, gap: 2 },
+  moduleTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   rowLabel: { fontSize: 15, fontWeight: "500", color: "#1F2937" },
   rowSub: { fontSize: 12, color: "#9CA3AF" },
+  moduleBadge: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  moduleBadgeText: { fontSize: 10, color: "#92400E", fontWeight: "700" },
+  moduleUnavailableText: { fontSize: 11, color: "#B45309", fontWeight: "500" },
 
   timeSection: { gap: 10, paddingTop: 4 },
   timeSectionLabel: { fontSize: 12, fontWeight: "600", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.5 },
@@ -505,7 +875,23 @@ const styles = StyleSheet.create({
   timeChipText: { fontSize: 14, fontWeight: "600", color: "#6B7280" },
   timeChipTextSelected: { color: "#6D28D9" },
 
+  contextualIntro: { fontSize: 13, color: "#6B7280", lineHeight: 20, marginTop: -4 },
+
   privacyText: { fontSize: 13, color: "#6B7280", lineHeight: 20 },
+  exportBtn: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    alignItems: "center",
+    flexDirection: "row",
+    minHeight: 62,
+    justifyContent: "center",
+  },
+  exportTextBlock: { flex: 1, gap: 2 },
+  exportBtnLabel: { fontSize: 14, color: "#6D28D9", fontWeight: "700" },
+  exportBtnSub: { fontSize: 11, color: "#6B7280", lineHeight: 16 },
+  actionDisabled: { opacity: 0.6 },
 
   signOutBtn: {
     backgroundColor: "#FFFFFF",
@@ -524,6 +910,12 @@ const styles = StyleSheet.create({
   },
   deleteBtnLabel: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
   deleteBtnSub: { fontSize: 11, color: "#9CA3AF" },
+
+  separator: {
+    height: 1,
+    backgroundColor: "#F3F4F6",
+    marginVertical: 16,
+  },
 
   modalOverlay: {
     flex: 1,
@@ -578,5 +970,38 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 16,
     color: "#1F2937",
+  },
+
+  customTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  customTimeInput: {
+    width: 52,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingVertical: 10,
+    fontSize: 18,
+    fontWeight: "600",
+    textAlign: "center",
+    color: "#1F2937",
+  },
+  customTimeSep: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#6B7280",
+  },
+  customTimeApply: {
+    backgroundColor: "#EDE5FF",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  customTimeApplyText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#6D28D9",
   },
 });

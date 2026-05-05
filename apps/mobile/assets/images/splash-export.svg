@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Fond FLAT #1E0857 identique à SplashScreenBackground → aucun carré visible.
+    Seuls les éléments blancs sont perceptibles sur l'écran.
+  -->
+  <defs>
+    <filter id="glow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="30" result="blur"/>
+    </filter>
+  </defs>
+
+  <!-- Fond uni — même couleur exacte que SplashScreenBackground -->
+  <rect width="1024" height="1024" fill="#1E0857"/>
+
+  <!-- Vague fantôme -->
+  <path d="M -60 658 C 210 658 375 358 512 358 C 649 358 814 658 1084 658"
+        stroke="rgba(255,255,255,0.10)" stroke-width="108" fill="none" stroke-linecap="round"/>
+
+  <!-- Vague principale -->
+  <path d="M -60 642 C 210 642 375 370 512 370 C 649 370 814 642 1084 642"
+        stroke="rgba(255,255,255,0.92)" stroke-width="62" fill="none" stroke-linecap="round"/>
+
+  <!-- Points de données -->
+  <circle cx="158" cy="614" r="18" fill="rgba(255,255,255,0.50)"/>
+  <circle cx="318" cy="507" r="18" fill="rgba(255,255,255,0.50)"/>
+  <circle cx="706" cy="507" r="18" fill="rgba(255,255,255,0.50)"/>
+  <circle cx="866" cy="614" r="18" fill="rgba(255,255,255,0.50)"/>
+
+  <!-- Halo glow -->
+  <circle cx="512" cy="370" r="130" fill="white" filter="url(#glow)" opacity="0.55"/>
+
+  <!-- Point central -->
+  <circle cx="512" cy="370" r="66" fill="white"/>
+  <circle cx="492" cy="350" r="22" fill="rgba(255,255,255,0.48)"/>
+</svg>
