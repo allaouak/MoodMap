@@ -76,22 +76,29 @@ jobs:
       - name: Run Maestro flows
         run: |
           export PATH="$PATH:$HOME/.maestro/bin"
-          maestro test \
-            .maestro/auth-login-failed.yaml \
-            .maestro/auth-login.yaml \
-            .maestro/check-in-smoke.yaml \
-            .maestro/calendar-navigation.yaml \
-            .maestro/insights-smoke.yaml \
-            .maestro/settings-delete-account-cancel.yaml \
-            --env APP_ID="$APP_ID" \
-            --env TEST_EMAIL="$TEST_EMAIL" \
-            --env TEST_PASSWORD="$TEST_PASSWORD" \
-            --format junit \
-            --output maestro-report.xml
+          mkdir -p maestro-reports
+          flows=(
+            auth-login-failed
+            auth-login
+            check-in-smoke
+            calendar-navigation
+            insights-smoke
+            settings-delete-account-cancel
+          )
+
+          for flow in "${flows[@]}"; do
+            echo "Running Maestro flow: $flow"
+            maestro test ".maestro/$flow.yaml" \
+              --env APP_ID="$APP_ID" \
+              --env TEST_EMAIL="$TEST_EMAIL" \
+              --env TEST_PASSWORD="$TEST_PASSWORD" \
+              --format junit \
+              --output "maestro-reports/$flow.xml"
+          done
 
       - name: Upload Maestro report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: maestro-report
-          path: maestro-report.xml
+          path: maestro-reports/*.xml
