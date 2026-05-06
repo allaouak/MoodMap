@@ -82,7 +82,7 @@ jobs:
       - name: Run Maestro flows
         run: |
           export PATH="$PATH:$HOME/.maestro/bin"
-          mkdir -p maestro-reports
+          mkdir -p maestro-reports maestro-artifacts maestro-debug
           flows=(
             auth-login-failed
             auth-login
@@ -98,13 +98,29 @@ jobs:
               --env APP_ID="$APP_ID" \
               --env TEST_EMAIL="$TEST_EMAIL" \
               --env TEST_PASSWORD="$TEST_PASSWORD" \
+              --test-output-dir "maestro-artifacts/$flow" \
+              --debug-output "maestro-debug/$flow" \
               --format junit \
               --output "maestro-reports/$flow.xml"
           done
 
-      - name: Upload Maestro report
+      - name: Collect simulator logs
+        if: always()
+        run: |
+          mkdir -p simulator-logs
+          xcrun simctl spawn "$SIMULATOR_UDID" log show \
+            --last 30m \
+            --style compact \
+            --predicate 'process == "MoodMap"' \
+            > simulator-logs/moodmap.log || true
+
+      - name: Upload Maestro artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-report
-          path: maestro-reports/*.xml
+          name: maestro-artifacts
+          path: |
+            maestro-reports/*.xml
+            maestro-artifacts/**
+            maestro-debug/**
+            simulator-logs/**
