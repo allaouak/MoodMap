@@ -12,6 +12,7 @@ jobs:
     timeout-minutes: 60
 
     env:
+      APP_ENV: development
       APP_ID: com.khettal.moodmap.dev
       TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
       TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
@@ -69,6 +70,9 @@ jobs:
       - name: Install app on simulator
         working-directory: apps/mobile
         run: xcrun simctl install "$SIMULATOR_UDID" ios/build/Build/Products/Debug-iphonesimulator/MoodMap.app
+
+      - name: Validate installed app bundle
+        run: xcrun simctl get_app_container "$SIMULATOR_UDID" "$APP_ID" app
 
       - name: Install Maestro
         run: curl -Ls "https://get.maestro.mobile.dev" | bash
