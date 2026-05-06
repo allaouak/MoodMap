@@ -53,9 +53,24 @@ jobs:
       - name: Build iOS simulator app
         working-directory: apps/mobile
         run: |
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -1)
+          if [ -z "$WORKSPACE" ]; then
+            echo "No iOS workspace generated. Current ios directory:"
+            find ios -maxdepth 2 -print
+            exit 1
+          fi
+
+          SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" | ruby -rjson -e 'data = JSON.parse(STDIN.read); puts data.dig("workspace", "schemes")&.find { |s| s.include?("MoodMap") } || data.dig("workspace", "schemes")&.first')
+          if [ -z "$SCHEME" ]; then
+            echo "No Xcode scheme found in $WORKSPACE"
+            xcodebuild -list -workspace "$WORKSPACE"
+            exit 1
+          fi
+
+          echo "Building workspace $WORKSPACE with scheme $SCHEME"
           xcodebuild \
-            -workspace ios/MoodMap.xcworkspace \
-            -scheme MoodMap \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
@@ -72,7 +87,16 @@ jobs:
 
       - name: Install app on simulator
         working-directory: apps/mobile
-        run: xcrun simctl install "$SIMULATOR_UDID" ios/build/Build/Products/Release-iphonesimulator/MoodMap.app
+        run: |
+          APP_PATH=$(find ios/build/Build/Products/Release-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No simulator app produced. Release products:"
+            find ios/build/Build/Products -maxdepth 3 -print
+            exit 1
+          fi
+
+          echo "Installing $APP_PATH"
+          xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
 
       - name: Validate installed app bundle
         run: xcrun simctl get_app_container "$SIMULATOR_UDID" "$APP_ID" app

@@ -6,6 +6,7 @@ import type {
   ActivityData,
   ScreenTimeData,
 } from "@/types/contextual";
+import { useOfflineQueueStore } from "@/stores/offline-queue.store";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const timeSchema = z.string().regex(/^\d{2}:\d{2}$/);
@@ -30,6 +31,25 @@ const screenTimeSchema = z.object({
   total_min: z.number().int().min(0).max(1440),
   source: z.literal("manual"),
 });
+
+// Heuristique réseau : TypeError natif de fetch ou message explicite.
+function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError) return true;
+  if (err && typeof err === "object" && "message" in err) {
+    const msg = String((err as { message: unknown }).message).toLowerCase();
+    return (
+      msg.includes("network request failed") ||
+      msg.includes("failed to fetch") ||
+      msg.includes("network error")
+    );
+  }
+  return false;
+}
+
+interface SaveOptions {
+  // Lors du flush de la queue hors-ligne, on ne doit pas re-enqueuer en cas d'échec.
+  skipQueue?: boolean;
+}
 
 export const contextualEntryService = {
   async getForDate(userId: string, date: string): Promise<ContextualEntry | null> {
@@ -64,7 +84,12 @@ export const contextualEntryService = {
     return (data ?? []) as ContextualEntry[];
   },
 
-  async saveSleep(userId: string, date: string, sleep: SleepData): Promise<void> {
+  async saveSleep(
+    userId: string,
+    date: string,
+    sleep: SleepData,
+    opts?: SaveOptions
+  ): Promise<void> {
     const validDate = dateSchema.parse(date);
     const validated = sleepSchema.parse(sleep);
     const { error } = await supabase
@@ -82,10 +107,26 @@ export const contextualEntryService = {
         },
         { onConflict: "user_id,entry_date" }
       );
-    if (error) throw error;
+
+    if (error) {
+      if (isNetworkError(error) && !opts?.skipQueue) {
+        useOfflineQueueStore.getState().enqueue({
+          userId,
+          date: validDate,
+          payload: { type: "sleep", data: validated as SleepData },
+        });
+        return;
+      }
+      throw error;
+    }
   },
 
-  async saveActivity(userId: string, date: string, activity: ActivityData): Promise<void> {
+  async saveActivity(
+    userId: string,
+    date: string,
+    activity: ActivityData,
+    opts?: SaveOptions
+  ): Promise<void> {
     const validDate = dateSchema.parse(date);
     const validated = activitySchema.parse(activity);
     const { error } = await supabase
@@ -103,10 +144,26 @@ export const contextualEntryService = {
         },
         { onConflict: "user_id,entry_date" }
       );
-    if (error) throw error;
+
+    if (error) {
+      if (isNetworkError(error) && !opts?.skipQueue) {
+        useOfflineQueueStore.getState().enqueue({
+          userId,
+          date: validDate,
+          payload: { type: "activity", data: validated as ActivityData },
+        });
+        return;
+      }
+      throw error;
+    }
   },
 
-  async saveScreenTime(userId: string, date: string, screen: ScreenTimeData): Promise<void> {
+  async saveScreenTime(
+    userId: string,
+    date: string,
+    screen: ScreenTimeData,
+    opts?: SaveOptions
+  ): Promise<void> {
     const validDate = dateSchema.parse(date);
     const validated = screenTimeSchema.parse(screen);
     const { error } = await supabase
@@ -121,7 +178,18 @@ export const contextualEntryService = {
         },
         { onConflict: "user_id,entry_date" }
       );
-    if (error) throw error;
+
+    if (error) {
+      if (isNetworkError(error) && !opts?.skipQueue) {
+        useOfflineQueueStore.getState().enqueue({
+          userId,
+          date: validDate,
+          payload: { type: "screen_time", data: validated as ScreenTimeData },
+        });
+        return;
+      }
+      throw error;
+    }
   },
 
   async clearScreenTime(userId: string, date: string): Promise<void> {
