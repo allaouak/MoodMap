@@ -36,10 +36,12 @@ export default function RegisterScreen() {
   const onSubmit = async (values: RegisterForm) => {
     try {
       setLoading(true);
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const { requiresConfirmation } = await authService.signUp(
         values.email,
         values.password,
-        values.displayName
+        values.displayName,
+        timezone
       );
       if (requiresConfirmation) {
         Alert.alert(

@@ -55,7 +55,7 @@ export const notificationService = {
     return status === "granted";
   },
 
-  async scheduleDaily(hour: number, minute: number): Promise<void> {
+  async scheduleDaily(hour: number, minute: number, timezone?: string): Promise<void> {
     await Notifications.cancelAllScheduledNotificationsAsync();
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -68,6 +68,7 @@ export const notificationService = {
         repeats: true,
         hour,
         minute,
+        ...(timezone ? { timezone } : {}),
       },
     });
   },
@@ -76,7 +77,7 @@ export const notificationService = {
     await Notifications.cancelAllScheduledNotificationsAsync();
   },
 
-  async apply(prefs: NotificationPrefs): Promise<boolean> {
+  async apply(prefs: NotificationPrefs, timezone?: string): Promise<boolean> {
     if (!prefs.enabled) {
       await this.cancelAll();
       await this.savePrefs(prefs);
@@ -84,7 +85,7 @@ export const notificationService = {
     }
     const granted = await this.requestPermission();
     if (!granted) return false;
-    await this.scheduleDaily(prefs.hour, prefs.minute);
+    await this.scheduleDaily(prefs.hour, prefs.minute, timezone);
     await this.savePrefs(prefs);
     return true;
   },

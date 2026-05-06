@@ -6,12 +6,18 @@ export const authService = {
   async signUp(
     email: string,
     password: string,
-    displayName: string
+    displayName: string,
+    timezone?: string
   ): Promise<{ requiresConfirmation: boolean }> {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: {
+        data: {
+          display_name: displayName,
+          ...(timezone && { timezone }),
+        },
+      },
     });
     if (error) throw error;
     return { requiresConfirmation: !data.session };

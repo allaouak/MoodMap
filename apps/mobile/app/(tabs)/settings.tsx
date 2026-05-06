@@ -186,7 +186,7 @@ export default function SettingsScreen() {
     const next = { ...prefs, enabled };
     setSaving(true);
     try {
-      const ok = await notificationService.apply(next);
+      const ok = await notificationService.apply(next, profile?.timezone);
       if (ok) {
         setPrefs(next);
       } else {
@@ -305,7 +305,7 @@ export default function SettingsScreen() {
     const next = { ...prefs, hour, minute };
     setSaving(true);
     try {
-      await notificationService.apply(next);
+      await notificationService.apply(next, profile?.timezone);
       setPrefs(next);
       setCustomHour(String(hour));
       setCustomMin(String(minute).padStart(2, "0"));

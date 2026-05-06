@@ -8,9 +8,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./global.css";
 import { useAuthListener, useAuth } from "@/hooks/useAuth";
 import { useContextualConsentsLoader } from "@/hooks/useContextualConsents";
+import { useFlushOfflineQueue } from "@/hooks/useFlushOfflineQueue";
 import { initSentry } from "@moodmap/config";
 import { supabase } from "@/lib/supabase";
 import { biometricService } from "@/services/biometric.service";
+import { onboardingService } from "@/services/onboarding.service";
 import { AppLockOverlay } from "@/components/layout/AppLockOverlay";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 
@@ -25,7 +27,7 @@ const queryClient = new QueryClient({
       retry: 1,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 60 * 2, // 2 hours
       networkMode: 'online', // Optimisation offline
       retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
@@ -39,12 +41,29 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   useAuthListener();
   useContextualConsentsLoader();
+  useFlushOfflineQueue();
   const { session, isLoading, isRecovery, setRecovery, lockEnabled, setLockEnabled } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
   const [lockChecked, setLockChecked] = useState(false);
+  const [onboardingReady, setOnboardingReady] = useState(false);
+  const [onboardingSeen, setOnboardingSeen] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   // Cache synchrone du statut verrou — évite un await dans le handler AppState
   const lockEnabledRef = useRef(false);
+  // Empêche un double redirect si le watchdog et l'effet normal s'exécutent en concurrence
+  const hasRedirectedRef = useRef(false);
+
+  useEffect(() => {
+    onboardingService
+      .hasSeen()
+      .then((seen) => {
+        setOnboardingSeen(seen);
+        setOnboardingReady(true);
+      })
+      .catch(() => {
+        setOnboardingReady(true);
+      });
+  }, []);
 
   // Vérification du verrou au démarrage — avant d'afficher le contenu sensible
   useEffect(() => {
@@ -135,18 +154,35 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [setRecovery]);
 
-  // Redirection selon l'état d'auth — attend aussi que le verrou soit vérifié
+  // Watchdog : si isLoading ou lockChecked ne se résolvent pas dans les 5s,
+  // on force SplashScreen.hideAsync() et on redirige vers auth (fail closed).
+  // En pratique, useAuthListener a déjà un timer 3s sur isLoading et le lock
+  // check a un finally — ce guard couvre les edge cases inattendus.
   useEffect(() => {
-    if (isLoading || !lockChecked) return;
-    SplashScreen.hideAsync();
+    const watchdog = setTimeout(() => {
+      if (!hasRedirectedRef.current) {
+        hasRedirectedRef.current = true;
+        void SplashScreen.hideAsync();
+        router.replace("/(auth)/welcome");
+      }
+    }, 5000);
+    return () => clearTimeout(watchdog);
+  }, []);
+
+  // Redirection selon l'état d'auth — attend aussi le verrou et le flag onboarding
+  useEffect(() => {
+    if (isLoading || !lockChecked || !onboardingReady) return;
+    if (hasRedirectedRef.current) return;
+    hasRedirectedRef.current = true;
+    void SplashScreen.hideAsync();
     if (isRecovery) {
       router.replace("/(auth)/reset-password");
     } else if (session) {
-      router.replace("/(tabs)" as never);
+      router.replace(onboardingSeen ? ("/(tabs)" as never) : ("/(onboarding)" as never));
     } else {
       router.replace("/(auth)/welcome");
     }
-  }, [session, isLoading, isRecovery, lockChecked]);
+  }, [session, isLoading, isRecovery, lockChecked, onboardingReady, onboardingSeen]);
 
   return (
     <ErrorBoundary>

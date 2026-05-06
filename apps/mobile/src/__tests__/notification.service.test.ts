@@ -97,6 +97,33 @@ describe("notificationService.apply — activé", () => {
     expect(mockSetItem).toHaveBeenCalled();
   });
 
+  it("inclut le timezone dans le trigger si fourni", async () => {
+    mockGetPermissions.mockResolvedValue({ status: "granted" });
+    mockCancelAll.mockResolvedValue(undefined);
+    mockSchedule.mockResolvedValue("notif-id");
+    mockSetItem.mockResolvedValue(undefined);
+
+    await notificationService.apply({ enabled: true, hour: 9, minute: 0 }, "America/New_York");
+
+    expect(mockSchedule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger: expect.objectContaining({ timezone: "America/New_York" }),
+      })
+    );
+  });
+
+  it("omet le timezone du trigger si non fourni", async () => {
+    mockGetPermissions.mockResolvedValue({ status: "granted" });
+    mockCancelAll.mockResolvedValue(undefined);
+    mockSchedule.mockResolvedValue("notif-id");
+    mockSetItem.mockResolvedValue(undefined);
+
+    await notificationService.apply({ enabled: true, hour: 9, minute: 0 });
+
+    const call = mockSchedule.mock.calls[0]?.[0] as { trigger: Record<string, unknown> };
+    expect(call?.trigger).not.toHaveProperty("timezone");
+  });
+
   it("retourne false sans planifier si la permission est refusée", async () => {
     mockGetPermissions.mockResolvedValue({ status: "denied" });
     mockRequestPermissions.mockResolvedValue({ status: "denied" });
