@@ -2,7 +2,10 @@ appId: ${APP_ID}
 ---
 - clearState
 - launchApp
-- assertVisible: "MoodMap"
+- extendedWaitUntil:
+    visible:
+      id: "welcome-login-button"
+    timeout: 15000
 - tapOn:
     id: "welcome-login-button"
 - assertVisible: "Bon retour"
