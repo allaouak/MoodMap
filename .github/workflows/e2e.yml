@@ -14,6 +14,7 @@ jobs:
     env:
       APP_ENV: development
       APP_ID: com.khettal.moodmap.dev
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
       TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
       TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
@@ -64,7 +65,8 @@ jobs:
       - name: Boot simulator
         run: |
           UDID=$(xcrun simctl list devices available | grep "iPhone 16 Pro" | head -1 | grep -oE '[A-F0-9-]{36}')
-          xcrun simctl boot "$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
           echo "SIMULATOR_UDID=$UDID" >> $GITHUB_ENV
 
       - name: Install app on simulator
