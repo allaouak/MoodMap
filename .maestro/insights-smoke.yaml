@@ -1,7 +1,8 @@
 appId: ${APP_ID}
 ---
-- clearState
-- launchApp
+- launchApp:
+    clearState: true
+    clearKeychain: true
 - extendedWaitUntil:
     visible:
       id: "welcome-login-button"
