@@ -50,7 +50,7 @@ export default function RootLayout() {
   useAuthListener();
   useContextualConsentsLoader();
   useFlushOfflineQueue();
-  const { session, isLoading, isRecovery, setRecovery, lockEnabled, setLockEnabled } = useAuth();
+  const { session, isLoading, isRecovery, setRecovery, lockEnabled, setLockEnabled, onboardingSeen, setOnboardingSeen } = useAuth();
   const pathname = usePathname();
   const segments = useSegments();
   const rootSegment = segments[0];
@@ -58,7 +58,6 @@ export default function RootLayout() {
   const [isLocked, setIsLocked] = useState(false);
   const [lockChecked, setLockChecked] = useState(false);
   const [onboardingReady, setOnboardingReady] = useState(false);
-  const [onboardingSeen, setOnboardingSeen] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   // Cache synchrone du statut verrou — évite un await dans le handler AppState
   const lockEnabledRef = useRef(false);
@@ -69,13 +68,13 @@ export default function RootLayout() {
     onboardingService
       .hasSeen()
       .then((seen) => {
-        setOnboardingSeen(seen);
+        if (seen) setOnboardingSeen(true);
         setOnboardingReady(true);
       })
       .catch(() => {
         setOnboardingReady(true);
       });
-  }, []);
+  }, [setOnboardingSeen]);
 
   // Vérification du verrou au démarrage — avant d'afficher le contenu sensible
   useEffect(() => {

@@ -15,7 +15,7 @@ const MOOD_LEVELS: MoodLevel[] = [1, 2, 3, 4, 5];
 const TOTAL_STEPS = 3;
 
 export default function OnboardingScreen() {
-  const { profile } = useAuth();
+  const { profile, setOnboardingSeen } = useAuth();
   const [step, setStep] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
 
@@ -25,9 +25,10 @@ export default function OnboardingScreen() {
     try {
       await onboardingService.markSeen();
     } finally {
+      setOnboardingSeen(true);
       router.replace("/(tabs)");
     }
-  }, []);
+  }, [setOnboardingSeen]);
 
   const goNext = useCallback(() => setStep((s) => s + 1), []);
 
