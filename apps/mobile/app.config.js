@@ -22,6 +22,12 @@ module.exports = {
       backgroundColor: "#1E0857",
       imageWidth: 148,
     },
+    updates: {
+      url: "https://u.expo.dev/266cf383-7b95-40b3-91dc-035730bb0d1c",
+    },
+    runtimeVersion: {
+      policy: "appVersion",
+    },
     ios: {
       supportsTablet: false,
       bundleIdentifier: bundleId,
@@ -32,6 +38,7 @@ module.exports = {
           "MoodMap peut lire tes données de sommeil et d'activité pour enrichir ton journal émotionnel. Tes données ne quittent jamais ton appareil sans ton accord.",
         NSHealthUpdateUsageDescription:
           "MoodMap ne modifie pas tes données de santé.",
+        ITSAppUsesNonExemptEncryption: false,
         ...(IS_DEV && {
           NSLocalNetworkUsageDescription:
             "MoodMap accède au réseau local pour se connecter au serveur de développement Expo.",
@@ -123,6 +130,11 @@ module.exports = {
     ],
     experiments: {
       typedRoutes: true,
+    },
+    extra: {
+      eas: {
+        projectId: "266cf383-7b95-40b3-91dc-035730bb0d1c",
+      },
     },
   },
 };

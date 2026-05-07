@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      },
       "ios": {
         "simulator": true
       }
@@ -14,6 +17,9 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "APP_ENV": "preview"
+      },
       "ios": {
         "simulator": false
       },
@@ -22,8 +28,10 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "channel": "production",
+      "env": {
+        "APP_ENV": "production"
+      },
       "ios": {
         "simulator": false
       },
@@ -35,7 +43,7 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID"
+        "ascAppId": "6767211680"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
