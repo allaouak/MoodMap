@@ -14,7 +14,8 @@ jobs:
     env:
       APP_ENV: development
       APP_ID: com.khettal.moodmap.dev
-      MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
+      MAESTRO_CLI_NO_ANALYTICS: true
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
       SENTRY_DISABLE_AUTO_UPLOAD: true
       TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
       TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
@@ -100,6 +101,12 @@ jobs:
 
       - name: Validate installed app bundle
         run: xcrun simctl get_app_container "$SIMULATOR_UDID" "$APP_ID" app
+
+      - name: Warm up simulator services
+        run: |
+          xcrun simctl launch "$SIMULATOR_UDID" com.apple.Preferences || true
+          sleep 15
+          xcrun simctl terminate "$SIMULATOR_UDID" com.apple.Preferences || true
 
       - name: Install Maestro
         run: curl -Ls "https://get.maestro.mobile.dev" | bash
