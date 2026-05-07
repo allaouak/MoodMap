@@ -184,6 +184,7 @@ export default function RootLayout() {
   // Redirection selon l'état d'auth — attend aussi le verrou et le flag onboarding
   useEffect(() => {
     if (isLoading || !lockChecked || !onboardingReady) return;
+    hasRedirectedRef.current = true;
     void SplashScreen.hideAsync();
     if (isRecovery) {
       router.replace("/(auth)/reset-password");

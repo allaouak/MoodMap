@@ -127,7 +127,7 @@ jobs:
 
           for flow in "${flows[@]}"; do
             echo "Running Maestro flow: $flow"
-            xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" || true
+            xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" >/dev/null 2>&1 || true
             xcrun simctl uninstall "$SIMULATOR_UDID" "$APP_ID" || true
             xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
             maestro test ".maestro/$flow.yaml" \
