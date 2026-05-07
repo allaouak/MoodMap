@@ -89,7 +89,7 @@ jobs:
       - name: Install app on simulator
         working-directory: apps/mobile
         run: |
-          APP_PATH=$(find ios/build/Build/Products/Release-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP_PATH=$(find "$PWD/ios/build/Build/Products/Release-iphonesimulator" -maxdepth 1 -name "*.app" | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "No simulator app produced. Release products:"
             find ios/build/Build/Products -maxdepth 3 -print
