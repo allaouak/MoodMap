@@ -9,7 +9,10 @@ appId: ${APP_ID}
     timeout: 15000
 - tapOn:
     id: "welcome-login-button"
-- assertVisible: "Bon retour"
+- extendedWaitUntil:
+    visible:
+      id: "login-email-input"
+    timeout: 15000
 - tapOn:
     id: "login-email-input"
 - inputText: "${TEST_EMAIL}"

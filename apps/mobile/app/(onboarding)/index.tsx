@@ -127,7 +127,12 @@ export default function OnboardingScreen() {
 
         {/* Actions */}
         {step < 2 ? (
-          <Button label="Suivant" size="lg" onPress={goNext} />
+          <Button
+            label="Suivant"
+            size="lg"
+            onPress={goNext}
+            testID="onboarding-next-button"
+          />
         ) : (
           <>
             <Button
@@ -135,12 +140,14 @@ export default function OnboardingScreen() {
               size="lg"
               loading={notifLoading}
               onPress={handleEnableNotifs}
+              testID="onboarding-enable-notifications-button"
             />
             <TouchableOpacity
               onPress={complete}
               disabled={notifLoading}
               activeOpacity={0.7}
               style={styles.skipBtn}
+              testID="onboarding-skip-notifications-button"
             >
               <Text style={styles.skipText}>Pas pour l'instant</Text>
             </TouchableOpacity>

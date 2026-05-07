@@ -9,7 +9,10 @@ appId: ${APP_ID}
     timeout: 15000
 - tapOn:
     id: "welcome-login-button"
-- assertVisible: "Bon retour"
+- extendedWaitUntil:
+    visible:
+      id: "login-email-input"
+    timeout: 15000
 - tapOn:
     id: "login-email-input"
 - inputText: "${TEST_EMAIL}"
@@ -19,5 +22,15 @@ appId: ${APP_ID}
 - hideKeyboard
 - tapOn:
     id: "login-submit-button"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-next-button"
+    timeout: 15000
+- tapOn:
+    id: "onboarding-next-button"
+- tapOn:
+    id: "onboarding-next-button"
+- tapOn:
+    id: "onboarding-skip-notifications-button"
 - assertVisible:
     id: "tab-today"
