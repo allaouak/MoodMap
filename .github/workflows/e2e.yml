@@ -98,6 +98,7 @@ jobs:
 
           echo "Installing $APP_PATH"
           xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
+          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
 
       - name: Validate installed app bundle
         run: xcrun simctl get_app_container "$SIMULATOR_UDID" "$APP_ID" app
@@ -126,6 +127,9 @@ jobs:
 
           for flow in "${flows[@]}"; do
             echo "Running Maestro flow: $flow"
+            xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" || true
+            xcrun simctl uninstall "$SIMULATOR_UDID" "$APP_ID" || true
+            xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
             maestro test ".maestro/$flow.yaml" \
               --env APP_ID="$APP_ID" \
               --env TEST_EMAIL="$TEST_EMAIL" \
