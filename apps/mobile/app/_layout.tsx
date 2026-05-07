@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus, Platform, View } from "react-native";
-import { Slot, router } from "expo-router";
+import { Slot, router, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
@@ -43,6 +43,8 @@ export default function RootLayout() {
   useContextualConsentsLoader();
   useFlushOfflineQueue();
   const { session, isLoading, isRecovery, setRecovery, lockEnabled, setLockEnabled } = useAuth();
+  const segments = useSegments();
+  const rootSegment = segments[0];
   const [isLocked, setIsLocked] = useState(false);
   const [lockChecked, setLockChecked] = useState(false);
   const [onboardingReady, setOnboardingReady] = useState(false);
@@ -176,11 +178,14 @@ export default function RootLayout() {
     if (isRecovery) {
       router.replace("/(auth)/reset-password");
     } else if (session) {
-      router.replace(onboardingSeen ? ("/(tabs)" as never) : ("/(onboarding)" as never));
-    } else {
+      const target = onboardingSeen ? "(tabs)" : "(onboarding)";
+      if (rootSegment !== target) {
+        router.replace(onboardingSeen ? ("/(tabs)" as never) : ("/(onboarding)" as never));
+      }
+    } else if (rootSegment !== "(auth)") {
       router.replace("/(auth)/welcome");
     }
-  }, [session, isLoading, isRecovery, lockChecked, onboardingReady, onboardingSeen]);
+  }, [session, isLoading, isRecovery, lockChecked, onboardingReady, onboardingSeen, rootSegment]);
 
   return (
     <ErrorBoundary>
