@@ -22,15 +22,20 @@ appId: ${APP_ID}
 - hideKeyboard
 - tapOn:
     id: "login-submit-button"
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-next-button"
+    commands:
+      - tapOn:
+          id: "onboarding-next-button"
+      - tapOn:
+          id: "onboarding-next-button"
+      - tapOn:
+          id: "onboarding-skip-notifications-button"
 - extendedWaitUntil:
     visible:
-      id: "onboarding-next-button"
+      id: "tab-today"
     timeout: 15000
-- tapOn:
-    id: "onboarding-next-button"
-- tapOn:
-    id: "onboarding-next-button"
-- tapOn:
-    id: "onboarding-skip-notifications-button"
 - assertVisible:
     id: "tab-today"
