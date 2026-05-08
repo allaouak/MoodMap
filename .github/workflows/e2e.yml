@@ -129,6 +129,11 @@ jobs:
           for flow in "${flows[@]}"; do
             echo "Running Maestro flow: $flow"
             xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" >/dev/null 2>&1 || true
+            # Reinstall for flows that do their own login — ensures clearKeychain truly takes effect
+            if [[ "$flow" == "auth-login-failed" ]] || [[ "$flow" == "auth-login" ]] || [[ "$flow" == "insights-smoke" ]]; then
+              xcrun simctl uninstall "$SIMULATOR_UDID" "$APP_ID" || true
+              xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
+            fi
             if maestro test ".maestro/$flow.yaml" \
               --env APP_ID="$APP_ID" \
               --env TEST_EMAIL="$TEST_EMAIL" \
