@@ -31,6 +31,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: bundleId,
+      buildNumber: "2",
       infoPlist: {
         NSFaceIDUsageDescription:
           "MoodMap utilise Face ID pour protéger l'accès à ton journal.",
