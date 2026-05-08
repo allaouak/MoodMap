@@ -22,10 +22,12 @@ appId: ${APP_ID}
 - hideKeyboard
 - tapOn:
     id: "login-submit-button"
+- takeScreenshot: "after-submit-tap"
 - extendedWaitUntil:
     notVisible:
       id: "login-submit-button"
     timeout: 15000
+- takeScreenshot: "after-wait"
 - runFlow:
     when:
       visible:
