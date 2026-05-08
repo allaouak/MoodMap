@@ -19,7 +19,7 @@ appId: ${APP_ID}
 - tapOn:
     id: "login-password-input"
 - inputText: "${TEST_PASSWORD}"
-- pressKey: Return
+- pressKey: Enter
 - tapOn:
     id: "login-submit-button"
 - extendedWaitUntil:
