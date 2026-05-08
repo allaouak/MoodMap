@@ -23,15 +23,24 @@ appId: ${APP_ID}
 - tapOn:
     id: "login-submit-button"
 - extendedWaitUntil:
-    visible:
-      id: "onboarding-next-button"
+    notVisible:
+      id: "login-submit-button"
     timeout: 15000
-- tapOn:
-    id: "onboarding-next-button"
-- tapOn:
-    id: "onboarding-next-button"
-- tapOn:
-    id: "onboarding-skip-notifications-button"
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-next-button"
+    commands:
+      - tapOn:
+          id: "onboarding-next-button"
+      - tapOn:
+          id: "onboarding-next-button"
+      - tapOn:
+          id: "onboarding-skip-notifications-button"
+- extendedWaitUntil:
+    visible:
+      id: "tab-today"
+    timeout: 15000
 - assertVisible:
     id: "tab-today"
 - tapOn:
