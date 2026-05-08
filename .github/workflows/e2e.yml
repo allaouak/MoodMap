@@ -125,20 +125,31 @@ jobs:
             settings-delete-account-cancel
           )
 
+          failed_flows=()
           for flow in "${flows[@]}"; do
             echo "Running Maestro flow: $flow"
             xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" >/dev/null 2>&1 || true
             xcrun simctl uninstall "$SIMULATOR_UDID" "$APP_ID" || true
             xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
-            maestro test ".maestro/$flow.yaml" \
+            if maestro test ".maestro/$flow.yaml" \
               --env APP_ID="$APP_ID" \
               --env TEST_EMAIL="$TEST_EMAIL" \
               --env TEST_PASSWORD="$TEST_PASSWORD" \
               --test-output-dir "maestro-artifacts/$flow" \
               --debug-output "maestro-debug/$flow" \
               --format junit \
-              --output "maestro-reports/$flow.xml"
+              --output "maestro-reports/$flow.xml"; then
+              echo "[OK] $flow"
+            else
+              echo "[FAILED] $flow"
+              failed_flows+=("$flow")
+            fi
           done
+
+          if [ ${#failed_flows[@]} -gt 0 ]; then
+            echo "Failed flows: ${failed_flows[*]}"
+            exit 1
+          fi
 
       - name: Collect simulator logs
         if: always()
