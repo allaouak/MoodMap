@@ -19,6 +19,7 @@ appId: ${APP_ID}
 - tapOn:
     id: "login-password-input"
 - inputText: "${TEST_PASSWORD}"
+- hideKeyboard
 - tapOn:
     id: "login-submit-button"
 - extendedWaitUntil:
