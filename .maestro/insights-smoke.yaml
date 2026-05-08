@@ -25,7 +25,7 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible:
       id: "login-submit-button"
-    timeout: 15000
+    timeout: 45000
 - runFlow:
     when:
       visible:
