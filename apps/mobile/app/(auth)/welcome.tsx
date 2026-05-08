@@ -8,7 +8,7 @@ import { MoodFaceIcon } from "@/components/mood/MoodFaceIcon";
 const FEATURES = [
   { icon: "lock-outline" as const, text: "Tes données restent privées et sécurisées" },
   { icon: "chart-line" as const, text: "Visualise tes cycles d'humeur avec douceur" },
-  { icon: "brain" as const, text: "Des résumés IA pour mieux te comprendre" },
+  { icon: "brain" as const, text: "Mieux te comprendre au fil du temps" },
 ] as const;
 
 export default function WelcomeScreen() {
