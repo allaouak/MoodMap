@@ -22,7 +22,7 @@ appId: ${APP_ID}
 # Let the React Native bridge flush onChangeText before handleSubmit reads form state
 - waitForAnimationToEnd
 - tapOn:
-    id: "login-submit-button"
+    text: "Se connecter"
 - takeScreenshot: after-submit
 - extendedWaitUntil:
     visible:

@@ -43,6 +43,20 @@ jobs:
           test -n "$EXPO_PUBLIC_SUPABASE_URL" || (echo "Missing EXPO_PUBLIC_SUPABASE_URL secret" && exit 1)
           test -n "$EXPO_PUBLIC_SUPABASE_ANON_KEY" || (echo "Missing EXPO_PUBLIC_SUPABASE_ANON_KEY secret" && exit 1)
 
+      - name: Verify E2E credentials against Supabase
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${EXPO_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${EXPO_PUBLIC_SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${TEST_EMAIL}\",\"password\":\"${TEST_PASSWORD}\"}")
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Supabase rejected E2E credentials (HTTP $HTTP_STATUS)."
+            echo "Check that TEST_EMAIL and TEST_PASSWORD secrets match the account in Supabase Auth."
+            exit 1
+          fi
+          echo "Credentials OK (Supabase HTTP $HTTP_STATUS)"
+
       - name: Generate iOS native project
         working-directory: apps/mobile
         run: pnpm exec expo prebuild --platform ios --clean --no-install
