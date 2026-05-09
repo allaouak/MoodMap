@@ -13,10 +13,15 @@ import { router } from "expo-router";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Constants from "expo-constants";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { authService } from "@/services/auth.service";
 import { loginSchema } from "@moodmap/validation";
+
+// XCTest typeText() on secureTextEntry doesn't fire onChangeText reliably,
+// which causes RHF to hold an empty password and Zod min(8) to fail silently.
+const IS_DEV_BUILD = Constants.expoConfig?.extra?.isDev === true;
 
 type LoginForm = z.infer<typeof loginSchema>;
 
@@ -87,7 +92,7 @@ export default function LoginScreen() {
                 <Input
                   label="Mot de passe"
                   placeholder="••••••••"
-                  secureTextEntry
+                  secureTextEntry={!IS_DEV_BUILD}
                   textContentType="password"
                   value={value}
                   onChangeText={onChange}
