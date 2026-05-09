@@ -133,7 +133,6 @@ module.exports = {
       typedRoutes: true,
     },
     extra: {
-      isDev: IS_DEV,
       eas: {
         projectId: "266cf383-7b95-40b3-91dc-035730bb0d1c",
       },
