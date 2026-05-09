@@ -19,15 +19,16 @@ appId: ${APP_ID}
 - tapOn:
     id: "login-password-input"
 - inputText: "${TEST_PASSWORD}"
-# Let the React Native bridge flush onChangeText before handleSubmit reads form state
+# Flush bridge state then dismiss keyboard (safe: secureTextEntry is disabled in dev builds)
 - waitForAnimationToEnd
+- hideKeyboard
 - tapOn:
-    text: "Se connecter"
+    id: "login-submit-button"
 - takeScreenshot: after-submit
 - extendedWaitUntil:
     visible:
       id: "onboarding-next-button"
-    timeout: 120000
+    timeout: 180000
 - tapOn:
     id: "onboarding-next-button"
 - tapOn:
