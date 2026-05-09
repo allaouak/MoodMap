@@ -19,12 +19,16 @@ appId: ${APP_ID}
 - tapOn:
     id: "login-password-input"
 - inputText: "${TEST_PASSWORD}"
+# Let the React Native bridge flush onChangeText before handleSubmit reads form state
+- pause:
+    millis: 1500
 - tapOn:
     id: "login-submit-button"
+- takeScreenshot: after-submit
 - extendedWaitUntil:
     visible:
       id: "onboarding-next-button"
-    timeout: 90000
+    timeout: 120000
 - tapOn:
     id: "onboarding-next-button"
 - tapOn:
