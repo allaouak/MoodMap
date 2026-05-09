@@ -58,6 +58,13 @@ jobs:
           fi
           echo "Credentials OK (Supabase HTTP $HTTP_STATUS)"
 
+      - name: Write CI .env for mobile app
+        working-directory: apps/mobile
+        run: |
+          printf 'EXPO_PUBLIC_SUPABASE_URL=%s\n' "$EXPO_PUBLIC_SUPABASE_URL" > .env
+          printf 'EXPO_PUBLIC_SUPABASE_ANON_KEY=%s\n' "$EXPO_PUBLIC_SUPABASE_ANON_KEY" >> .env
+          printf 'EXPO_PUBLIC_IS_E2E=true\n' >> .env
+
       - name: Generate iOS native project
         working-directory: apps/mobile
         run: pnpm exec expo prebuild --platform ios --clean --no-install
@@ -132,20 +139,20 @@ jobs:
           export PATH="$PATH:$HOME/.maestro/bin"
           mkdir -p maestro-reports maestro-artifacts maestro-debug
           flows=(
-            auth-login-failed
             auth-login
             check-in-smoke
             calendar-navigation
             insights-smoke
             settings-delete-account-cancel
+            auth-login-failed
           )
 
           failed_flows=()
           for flow in "${flows[@]}"; do
             echo "Running Maestro flow: $flow"
             xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" >/dev/null 2>&1 || true
-            # Reinstall for flows that do their own login — ensures clearKeychain truly takes effect
-            if [[ "$flow" == "auth-login-failed" ]] || [[ "$flow" == "auth-login" ]] || [[ "$flow" == "insights-smoke" ]]; then
+            # Reinstall for flows that need a clean Keychain — ensures clearKeychain truly takes effect
+            if [[ "$flow" == "auth-login" ]] || [[ "$flow" == "insights-smoke" ]] || [[ "$flow" == "auth-login-failed" ]]; then
               xcrun simctl uninstall "$SIMULATOR_UDID" "$APP_ID" || true
               xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
             fi
