@@ -165,9 +165,15 @@ jobs:
           for flow in "${flows[@]}"; do
             echo "Running Maestro flow: $flow"
             xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID" >/dev/null 2>&1 || true
-            # Reinstall for flows that need a clean Keychain — ensures clearKeychain truly takes effect
+            # For flows that need a guaranteed-clean keychain, erase the entire simulator.
+            # xcrun simctl uninstall does NOT clear keychain on iOS 18 (same as real device),
+            # and Maestro's clearKeychain: true is unreliable on newer simulators.
+            # xcrun simctl erase is the only guaranteed way to wipe keychain state.
             if [[ "$flow" == "auth-login" ]] || [[ "$flow" == "insights-smoke" ]] || [[ "$flow" == "auth-login-failed" ]]; then
-              xcrun simctl uninstall "$SIMULATOR_UDID" "$APP_ID" || true
+              xcrun simctl shutdown "$SIMULATOR_UDID" || true
+              xcrun simctl erase "$SIMULATOR_UDID"
+              xcrun simctl boot "$SIMULATOR_UDID"
+              xcrun simctl bootstatus "$SIMULATOR_UDID" -b
               xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
             fi
             if maestro test ".maestro/$flow.yaml" \
