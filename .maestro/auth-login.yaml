@@ -24,7 +24,10 @@ appId: ${APP_ID}
 - hideKeyboard
 - tapOn:
     id: "login-submit-button"
-- takeScreenshot: after-submit
+# Wait for the loading animation to stop (spinner ends when Supabase responds),
+# then screenshot captures either the auth error message or the onboarding screen.
+- waitForAnimationToEnd
+- takeScreenshot: after-auth-result
 - extendedWaitUntil:
     visible:
       id: "onboarding-next-button"

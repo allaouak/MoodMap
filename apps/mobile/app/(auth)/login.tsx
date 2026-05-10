@@ -37,9 +37,14 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await authService.signIn(values.email, values.password);
-    } catch {
-      // Message générique — ne pas exposer si l'email existe ou non (user enumeration)
-      Alert.alert("Erreur", "Email ou mot de passe incorrect.");
+    } catch (err) {
+      // In E2E mode show the raw Supabase error so CI screenshots capture the root cause.
+      // In production keep the generic message to avoid user enumeration.
+      const msg =
+        IS_E2E && err instanceof Error
+          ? err.message
+          : "Email ou mot de passe incorrect.";
+      Alert.alert("Erreur", msg);
     } finally {
       setLoading(false);
     }

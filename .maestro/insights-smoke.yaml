@@ -24,7 +24,8 @@ appId: ${APP_ID}
 - hideKeyboard
 - tapOn:
     id: "login-submit-button"
-- takeScreenshot: after-submit
+- waitForAnimationToEnd
+- takeScreenshot: after-auth-result
 - extendedWaitUntil:
     visible:
       id: "onboarding-next-button"

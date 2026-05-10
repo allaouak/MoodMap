@@ -125,6 +125,20 @@ jobs:
       - name: Validate installed app bundle
         run: xcrun simctl get_app_container "$SIMULATOR_UDID" "$APP_ID" app
 
+      - name: Inspect JS bundle env vars
+        working-directory: apps/mobile
+        run: |
+          BUNDLE=$(find ios/build/Build/Products/Release-iphonesimulator -name "main.jsbundle" | head -1)
+          if [ -z "$BUNDLE" ]; then
+            echo "::warning::main.jsbundle not found — skipping inspection"
+          else
+            echo "Bundle: $BUNDLE"
+            echo "--- Supabase URL in bundle ---"
+            grep -o 'supabase\.co[^"]*\|https://[a-z0-9]*\.supabase\.co' "$BUNDLE" | sort -u | head -5 || echo "(no supabase.co reference found)"
+            echo "--- IS_E2E flag in bundle ---"
+            grep -o 'EXPO_PUBLIC_IS_E2E[^,}]*\|IS_E2E[^,;]*' "$BUNDLE" | head -5 || echo "(not found)"
+          fi
+
       - name: Warm up simulator services
         run: |
           xcrun simctl launch "$SIMULATOR_UDID" com.apple.Preferences || true
