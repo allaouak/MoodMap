@@ -38,8 +38,9 @@ export const authService = {
   },
 
   async resetPassword(email: string) {
+    const redirectTo = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/reset-redirect`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "moodmap://reset-password",
+      redirectTo,
     });
     if (error) throw error;
   },

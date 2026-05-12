@@ -15,11 +15,19 @@ import { MoodStatsRow } from "@/features/insights/MoodStatsRow";
 import { TagCloud } from "@/features/insights/TagCloud";
 import { ContextualSummaryCard, type ContextualStats } from "@/features/insights/ContextualSummaryCard";
 
+interface TagStat {
+  tag: string;
+  count: number;
+  avgMood: number;
+  avgEnergy: number;
+  avgStress: number;
+}
+
 interface Stats {
   avgMood: number;
   avgEnergy: number;
   avgStress: number;
-  topTags: { tag: string; count: number }[];
+  topTags: TagStat[];
   entries: MoodEntry[];
 }
 
@@ -34,10 +42,19 @@ function computeStats(entries: MoodEntry[]): Stats {
   const n = entries.length;
   const tagCounts: Record<string, number> = {};
   entries.forEach((e) => e.tags.forEach((t) => (tagCounts[t] = (tagCounts[t] ?? 0) + 1)));
-  const topTags = Object.entries(tagCounts)
+  const topTags: TagStat[] = Object.entries(tagCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
-    .map(([tag, count]) => ({ tag, count }));
+    .map(([tag, count]) => {
+      const te = entries.filter((e) => e.tags.includes(tag));
+      return {
+        tag,
+        count,
+        avgMood: te.reduce((s, e) => s + e.mood, 0) / te.length,
+        avgEnergy: te.reduce((s, e) => s + e.energy, 0) / te.length,
+        avgStress: te.reduce((s, e) => s + e.stress, 0) / te.length,
+      };
+    });
   return { avgMood: sum.mood / n, avgEnergy: sum.energy / n, avgStress: sum.stress / n, topTags, entries };
 }
 

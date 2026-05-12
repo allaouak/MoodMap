@@ -83,7 +83,7 @@ export default function ResetPasswordScreen() {
                   <Input
                     label="Nouveau mot de passe"
                     placeholder="••••••••"
-                    secureTextEntry
+                    showPasswordToggle
                     textContentType="newPassword"
                     value={value}
                     onChangeText={onChange}

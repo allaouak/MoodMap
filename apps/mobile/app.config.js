@@ -48,6 +48,7 @@ module.exports = {
       },
       entitlements: {
         "com.apple.developer.healthkit": true,
+        "com.apple.developer.associated-domains": ["applinks:moodmap.app"],
       },
     },
     android: {

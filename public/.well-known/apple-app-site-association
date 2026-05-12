@@ -2,7 +2,10 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["XXXXXXXXXX.com.moodmap.app"],
+        "appIDs": [
+          "TEAMID.com.khettal.moodmap",
+          "TEAMID.com.khettal.moodmap.preview"
+        ],
         "components": [
           {
             "/": "/reset-password",

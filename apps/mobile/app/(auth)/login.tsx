@@ -97,7 +97,7 @@ export default function LoginScreen() {
                 <Input
                   label="Mot de passe"
                   placeholder="••••••••"
-                  secureTextEntry={!IS_E2E}
+                  showPasswordToggle={!IS_E2E}
                   textContentType="password"
                   value={value}
                   onChangeText={onChange}

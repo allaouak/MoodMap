@@ -126,7 +126,7 @@ export default function RegisterScreen() {
                   <Input
                     label="Mot de passe"
                     placeholder="••••••••"
-                    secureTextEntry
+                    showPasswordToggle
                     textContentType="newPassword"
                     value={value}
                     onChangeText={onChange}
@@ -144,7 +144,7 @@ export default function RegisterScreen() {
                 <Input
                   label="Confirme le mot de passe"
                   placeholder="••••••••"
-                  secureTextEntry
+                  showPasswordToggle
                   textContentType="newPassword"
                   value={value}
                   onChangeText={onChange}

@@ -62,7 +62,7 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
           <Input
             label="Mot de passe actuel"
             placeholder="••••••••"
-            secureTextEntry
+            showPasswordToggle
             textContentType="password"
             value={value}
             onChangeText={onChange}
@@ -80,7 +80,7 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
             <Input
               label="Nouveau mot de passe"
               placeholder="••••••••"
-              secureTextEntry
+              showPasswordToggle
               textContentType="newPassword"
               value={value}
               onChangeText={onChange}
@@ -99,7 +99,7 @@ export function ChangePasswordForm({ userEmail, onSuccess, onCancel }: ChangePas
           <Input
             label="Confirmer le nouveau mot de passe"
             placeholder="••••••••"
-            secureTextEntry
+            showPasswordToggle
             textContentType="newPassword"
             value={value}
             onChangeText={onChange}
