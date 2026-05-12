@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, Pressable, Modal, StyleSheet } from "react-native";
-import { MOOD_COLOR, MOOD_LABELS, MoodLevel } from "@/types";
+import { MOOD_COLOR, MoodLevel } from "@/types";
 
 interface TagStat {
   tag: string;
