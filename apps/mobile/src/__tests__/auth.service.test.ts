@@ -112,13 +112,13 @@ describe("authService.signOut", () => {
 // ─── resetPassword ────────────────────────────────────────────────────────────
 
 describe("authService.resetPassword", () => {
-  it("appelle resetPasswordForEmail avec le deep link moodmap://", async () => {
+  it("appelle resetPasswordForEmail avec l'URL de l'edge function", async () => {
     authMock.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null } as never);
 
     await authService.resetPassword("a@b.com");
     expect(authMock.resetPasswordForEmail).toHaveBeenCalledWith(
       "a@b.com",
-      { redirectTo: "moodmap://reset-password" }
+      { redirectTo: expect.stringContaining("/functions/v1/reset-redirect") }
     );
   });
 
